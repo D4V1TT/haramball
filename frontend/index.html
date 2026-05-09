@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haramball — Vote the worst football of the week</title>
+<meta name="description" content="Vote for the team playing the worst, most cynical, anti-football of the week. Weekly, monthly, and all-time haramball leaderboards from 80+ leagues worldwide." />
+<meta name="theme-color" content="#0a0a0a" />
+
+<!-- Open Graph -->
+<meta property="og:title" content="Haramball — Vote the worst football of the week" />
+<meta property="og:description" content="Who's playing the worst football right now? You decide." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://haramball.com" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Haramball — Vote the worst football of the week" />
+<meta name="twitter:description" content="Who's playing the worst football right now? You decide." />
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23d63031'/><text x='50' y='68' font-family='Arial Black,sans-serif' font-size='60' font-weight='900' text-anchor='middle' fill='white'>H</text></svg>" />
+
+<link rel="stylesheet" href="styles.css" />
+
+<!-- Backend config (loaded BEFORE the API module). Edit env.js with your Supabase keys. -->
+<script src="env.js"></script>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo" onclick="event.preventDefault(); switchView('vote')">
+      <span class="logo-mark" aria-hidden="true">H</span>
+      <span class="logo-text">haram<span>ball</span></span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <button class="nav-btn active" data-view="vote">Vote</button>
+      <button class="nav-btn" data-view="leaderboard">Leaderboards</button>
+      <button class="nav-btn" data-view="about">About</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================
+     VOTE VIEW
+     ============================================================ -->
+<section id="view-vote" class="view">
+  <div class="hero">
+    <h1>Who's playing the<br><span class="accent">worst football</span> right now?</h1>
+    <p>Vote for the team that bores you to death. Time-wasting, parking the bus, anti-football. You decide who's serving haramball this week.</p>
+    <div class="hero-stats" id="hero-stats" aria-live="polite">
+      <div class="hero-stat"><div class="num" id="stat-votes">—</div><div class="lbl">Total votes</div></div>
+      <div class="hero-stat"><div class="num" id="stat-week">—</div><div class="lbl">This week</div></div>
+      <div class="hero-stat"><div class="num" id="stat-teams">—</div><div class="lbl">Teams listed</div></div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div id="vote-status" class="vote-status" role="status" aria-live="polite">
+      <span class="dot"></span>
+      <span id="vote-status-text">Loading…</span>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" class="search-input" id="search" placeholder="Search team, league, or country…" aria-label="Search teams" autocomplete="off" />
+      <select class="league-filter" id="conf-filter" aria-label="Filter by confederation">
+        <option value="all">All confederations</option>
+        <option value="UEFA">UEFA (Europe)</option>
+        <option value="CONMEBOL">CONMEBOL (South America)</option>
+        <option value="CONCACAF">CONCACAF (N. America)</option>
+        <option value="AFC">AFC (Asia)</option>
+        <option value="CAF">CAF (Africa)</option>
+        <option value="OFC">OFC (Oceania)</option>
+      </select>
+      <select class="league-filter" id="league-filter" aria-label="Filter by league">
+        <option value="all">All leagues</option>
+      </select>
+    </div>
+
+    <div class="teams-meta" id="teams-meta" aria-live="polite"></div>
+    <div class="teams-grid" id="teams-grid" role="list"></div>
+    <div class="teams-empty hidden" id="teams-empty">No teams match your search.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     LEADERBOARD VIEW
+     ============================================================ -->
+<section id="view-leaderboard" class="view hidden">
+  <div class="page">
+    <h2 class="page-title">Haramball Leaderboards</h2>
+    <p class="page-sub">The teams the people have spoken on. Updated live.</p>
+
+    <div class="lb-tabs" role="tablist">
+      <button class="lb-tab active" role="tab" data-period="week">This week</button>
+      <button class="lb-tab" role="tab" data-period="month">This month</button>
+      <button class="lb-tab" role="tab" data-period="year">This year</button>
+      <button class="lb-tab" role="tab" data-period="all">All time</button>
+    </div>
+
+    <div class="lb-list" id="lb-list" aria-live="polite"></div>
+    <div class="lb-loading hidden" id="lb-loading">Loading leaderboard…</div>
+    <div class="lb-empty hidden" id="lb-empty">No votes yet for this period. Be the first.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ABOUT VIEW
+     ============================================================ -->
+<section id="view-about" class="view hidden">
+  <div class="page about">
+    <h2 class="page-title">What is Haramball?</h2>
+    <p class="page-sub">A simple idea, a serious mission.</p>
+
+    <div class="about-card">
+      <p><strong>Haramball</strong> is a term football fans use for the worst kind of football — cynical, time-wasting, defensive, soulless. The football that makes you check your phone instead of the pitch.</p>
+      <p>This site lets you vote for the team you think is the biggest haramball offender right now. <strong>One vote per day.</strong> Pick a reason — time-wasting, parking the bus, diving — and optionally add a short comment. Your votes feed the weekly, monthly, yearly, and all-time leaderboards.</p>
+      <p>No registration, no accounts, no paywalls.</p>
+      <p>Tag <a href="https://twitter.com/haramball" rel="noopener">@haramball</a> on socials when your team gets robbed by haramball football. We feature the worst clips of the week.</p>
+    </div>
+
+    <div class="about-card">
+      <strong class="about-strong">How voting works</strong>
+      One vote per device per day. Votes are timestamped (UTC) so the weekly leaderboard rolls over Monday, monthly on the 1st, yearly on January 1.
+    </div>
+
+    <div class="about-card">
+      <strong class="about-strong">Coverage</strong>
+      Currently <span id="about-team-count">—</span> top-flight clubs across <span id="about-league-count">—</span> leagues worldwide, spanning all six confederations (UEFA, CONMEBOL, CONCACAF, AFC, CAF, OFC). Missing your team? Send us a message.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <p>haramball.com · Vote the worst football of the week</p>
+  <p class="footer-fine">Not affiliated with any club, league, or federation. For entertainment only.</p>
+</footer>
+
+<!-- ============================================================
+     VOTE MODAL
+     ============================================================ -->
+<div class="modal-backdrop hidden" id="vote-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vote-modal-title">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+    <div class="modal-team">
+      <div class="modal-badge" id="modal-badge"></div>
+      <div>
+        <div class="modal-team-name" id="modal-team-name"></div>
+        <div class="modal-team-meta" id="modal-team-meta"></div>
+      </div>
+    </div>
+    <h3 id="vote-modal-title">Why is this haramball?</h3>
+    <p class="modal-sub">Pick a reason that fits best.</p>
+    <div class="reasons-grid" id="reasons-grid" role="radiogroup" aria-label="Reason"></div>
+    <label class="comment-label" for="comment">Add a short comment (optional)</label>
+    <input type="text" id="comment" class="comment-input" maxlength="100" placeholder="e.g. 90 minutes of backwards passing" />
+    <div class="char-count"><span id="char-count">0</span>/100</div>
+    <button class="vote-btn" id="vote-submit" disabled>Cast vote</button>
+    <div class="modal-error hidden" id="modal-error"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+/* ============================================================
+ * Haramball — application logic
+ * ============================================================ */
+import { api } from './api.js';
+
+// ---------- DOM helpers ----------
+const $  = (id) => document.getElementById(id);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function fmtNum(n) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString();
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = String(name).split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function showToast(msg, ms = 2400) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ---------- Application state ----------
+const state = {
+  teams: [],
+  leagues: [],
+  reasons: [],
+  votedToday: { voted: false },
+  selectedTeam: null,
+  selectedReason: null,
+  filterConf: 'all',
+  filterLeague: 'all',
+  searchQuery: '',
+  lbPeriod: 'week',
+};
+
+// ---------- View routing ----------
+function switchView(view) {
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  $$('.view').forEach(s => s.classList.add('hidden'));
+  const target = $(`view-${view}`);
+  if (target) target.classList.remove('hidden');
+  if (view === 'leaderboard') loadLeaderboard();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+window.switchView = switchView; // exposed for the logo onclick handler
+
+// ---------- Stats / hero ----------
+async function loadGlobalStats() {
+  try {
+    const s = await api.getGlobalStats();
+    $('stat-votes').textContent = fmtNum(s.total_votes);
+    $('stat-week').textContent  = fmtNum(s.votes_this_week);
+    $('stat-teams').textContent = fmtNum(s.active_teams);
+    $('about-team-count').textContent = fmtNum(s.active_teams);
+  } catch (e) {
+    console.error('stats failed', e);
+  }
+}
+
+// ---------- Voting status ----------
+async function refreshVotedToday() {
+  try {
+    state.votedToday = await api.hasVotedToday();
+  } catch (e) {
+    console.error('voted-today failed', e);
+    state.votedToday = { voted: false };
+  }
+  renderVoteStatus();
+}
+
+function renderVoteStatus() {
+  const el = $('vote-status');
+  const text = $('vote-status-text');
+  if (state.votedToday.voted) {
+    const team = state.teams.find(t => t.id === state.votedToday.team_id);
+    el.classList.add('voted');
+    text.textContent = team
+      ? `You voted ${team.name} today. Come back tomorrow.`
+      : `You've voted today. Come back tomorrow.`;
+  } else {
+    el.classList.remove('voted');
+    text.textContent = 'You can vote once per day. Pick your haramball team below.';
+  }
+}
+
+// ---------- Teams grid ----------
+function filteredTeams() {
+  const q = state.searchQuery.toLowerCase().trim();
+  return state.teams.filter(t => {
+    if (state.filterConf   !== 'all' && t.confederation !== state.filterConf) return false;
+    if (state.filterLeague !== 'all' && t.league        !== state.filterLeague) return false;
+    if (q) {
+      const hay = `${t.name} ${t.short_name || ''} ${t.league || ''} ${t.country || ''} ${t.city || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTeams() {
+  const grid = $('teams-grid');
+  const empty = $('teams-empty');
+  const meta = $('teams-meta');
+  const list = filteredTeams();
+  const canVote = !state.votedToday.voted;
+  const myLastTeam = state.votedToday.team_id || null;
+
+  meta.textContent = `${list.length} of ${state.teams.length} teams`;
+
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  // Cap render to 240 cards per pass to keep DOM cheap on mobile
+  const capped = list.slice(0, 240);
+  grid.innerHTML = capped.map(t => {
+    const isMyVote = !canVote && t.id === myLastTeam;
+    const cls = ['team-card'];
+    if (!canVote) cls.push('disabled');
+    if (isMyVote) cls.push('voted');
+    const meta = isMyVote
+      ? `${escapeHtml(t.league || '')} · Your vote`
+      : escapeHtml([t.league, t.country].filter(Boolean).join(' · '));
+    return `<button class="${cls.join(' ')}" data-team="${escapeHtml(t.id)}" role="listitem"${!canVote ? ' disabled' : ''}>
+      <span class="team-badge" style="background:${escapeHtml(t.color || '#444')}">${escapeHtml(getInitials(t.name))}</span>
+      <span class="team-info">
+        <span class="team-name">${escapeHtml(t.name)}</span>
+        <span class="team-meta">${meta}</span>
+      </span>
+    </button>`;
+  }).join('');
+
+  if (capped.length < list.length) {
+    meta.textContent = `Showing 240 of ${list.length} matching teams (${state.teams.length} total). Refine your search.`;
+  }
+
+  $$('.team-card', grid).forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.classList.contains('disabled')) return;
+      openVoteModal(card.dataset.team);
+    });
+  });
+}
+
+// ---------- League filter (depends on confederation choice) ----------
+function rebuildLeagueFilter() {
+  const sel = $('league-filter');
+  const current = sel.value;
+  const conf = state.filterConf;
+  const leagues = (conf === 'all' ? state.leagues : state.leagues.filter(l => l.confederation === conf))
+    .slice()
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  sel.innerHTML = `<option value="all">All leagues</option>` + leagues.map(l =>
+    `<option value="${escapeHtml(l.name)}">${escapeHtml(l.name)} — ${escapeHtml(l.country)}</option>`
+  ).join('');
+  // Preserve previous selection if still valid
+  sel.value = leagues.some(l => l.name === current) ? current : 'all';
+  state.filterLeague = sel.value;
+}
+
+// ---------- Vote modal ----------
+function openVoteModal(teamId) {
+  const team = state.teams.find(t => t.id === teamId);
+  if (!team) return;
+  state.selectedTeam = team;
+  state.selectedReason = null;
+
+  $('modal-badge').textContent = getInitials(team.name);
+  $('modal-badge').style.background = team.color || '#444';
+  $('modal-team-name').textContent = team.name;
+  $('modal-team-meta').textContent = [team.league, team.country].filter(Boolean).join(' · ');
+
+  // Render reason buttons
+  const grid = $('reasons-grid');
+  grid.innerHTML = state.reasons.map(r =>
+    `<button class="reason-btn" data-reason="${escapeHtml(r.code)}" type="button" role="radio" aria-checked="false">${escapeHtml(r.label)}</button>`
+  ).join('');
+  $$('.reason-btn', grid).forEach(b => {
+    b.addEventListener('click', () => {
+      $$('.reason-btn', grid).forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-checked', 'false'); });
+      b.classList.add('selected');
+      b.setAttribute('aria-checked', 'true');
+      state.selectedReason = b.dataset.reason;
+      $('vote-submit').disabled = false;
+    });
+  });
+
+  $('comment').value = '';
+  $('char-count').textContent = '0';
+  $('vote-submit').disabled = true;
+  $('modal-error').classList.add('hidden');
+
+  const m = $('vote-modal');
+  m.classList.remove('hidden');
+  m.setAttribute('aria-hidden', 'false');
+  setTimeout(() => $('comment').focus({ preventScroll: true }), 50);
+}
+
+function closeVoteModal() {
+  const m = $('vote-modal');
+  m.classList.add('hidden');
+  m.setAttribute('aria-hidden', 'true');
+  state.selectedTeam = null;
+  state.selectedReason = null;
+}
+
+async function submitVote() {
+  if (!state.selectedTeam || !state.selectedReason) return;
+  const btn = $('vote-submit');
+  const errEl = $('modal-error');
+  errEl.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Casting…';
+  try {
+    await api.castVote({
+      team_id:    state.selectedTeam.id,
+      reason_tag: state.selectedReason,
+      comment:    $('comment').value,
+    });
+    closeVoteModal();
+    showToast(`Vote registered for ${state.selectedTeam.name}`);
+    await Promise.all([refreshVotedToday(), loadGlobalStats()]);
+    renderTeams();
+  } catch (e) {
+    let msg = e.message || 'Could not cast vote.';
+    if (e.code === 'P0001' || /already voted/i.test(msg)) msg = 'You\'ve already voted today. Come back tomorrow.';
+    errEl.textContent = msg;
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Cast vote';
+  }
+}
+
+// ---------- Leaderboard ----------
+async function loadLeaderboard() {
+  const list = $('lb-list');
+  const loading = $('lb-loading');
+  const empty = $('lb-empty');
+
+  list.innerHTML = '';
+  empty.classList.add('hidden');
+  loading.classList.remove('hidden');
+
+  try {
+    const rows = await api.getLeaderboard({ period: state.lbPeriod, limit: 50 });
+    loading.classList.add('hidden');
+
+    if (!rows || rows.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    list.innerHTML = rows.map(r => {
+      const rank = Number(r.rank);
+      let rankCls = '';
+      if (rank === 1) rankCls = 'gold';
+      else if (rank === 2) rankCls = 'silver';
+      else if (rank === 3) rankCls = 'bronze';
+      const meta = [r.league_name, r.country_name].filter(Boolean).join(' · ');
+      const reason = r.top_reason_label
+        ? `<div class="lb-reason">${escapeHtml(r.top_reason_label)}</div>`
+        : '';
+      return `<div class="lb-row">
+        <div class="lb-rank ${rankCls}">${rank}</div>
+        <div class="lb-team-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</div>
+        <div class="lb-team-info">
+          <div class="lb-team-name">${escapeHtml(r.team_name)}</div>
+          <div class="lb-team-meta">${escapeHtml(meta)}</div>
+          ${reason}
+        </div>
+        <div class="lb-vote-block">
+          <div class="lb-votes">${fmtNum(r.vote_count)}</div>
+          <div class="lb-votes-lbl">votes</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    loading.classList.add('hidden');
+    list.innerHTML = `<div class="lb-empty">Could not load leaderboard. ${escapeHtml(e.message || '')}</div>`;
+    console.error('leaderboard failed', e);
+  }
+}
+
+// ---------- About counts ----------
+function renderAboutCounts() {
+  $('about-team-count').textContent   = fmtNum(state.teams.length);
+  $('about-league-count').textContent = fmtNum(state.leagues.length);
+}
+
+// ---------- Bootstrap ----------
+async function init() {
+  // Wire UI events first so the page is responsive even before data loads
+  $$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+  $$('.lb-tab').forEach(t => t.addEventListener('click', () => {
+    $$('.lb-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    state.lbPeriod = t.dataset.period;
+    loadLeaderboard();
+  }));
+
+  $('search').addEventListener('input', e => { state.searchQuery = e.target.value; renderTeams(); });
+  $('conf-filter').addEventListener('change', e => {
+    state.filterConf = e.target.value;
+    rebuildLeagueFilter();
+    renderTeams();
+  });
+  $('league-filter').addEventListener('change', e => {
+    state.filterLeague = e.target.value;
+    renderTeams();
+  });
+
+  $('modal-close').addEventListener('click', closeVoteModal);
+  $('vote-modal').addEventListener('click', e => {
+    if (e.target.id === 'vote-modal') closeVoteModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('vote-modal').classList.contains('hidden')) closeVoteModal();
+  });
+  $('comment').addEventListener('input', e => {
+    $('char-count').textContent = e.target.value.length;
+  });
+  $('vote-submit').addEventListener('click', submitVote);
+
+  // Load reference data + voted-today + stats in parallel.
+  try {
+    const [teams, leagues, reasons] = await Promise.all([
+      api.getTeams(), api.getLeagues(), api.getReasonTags()
+    ]);
+    state.teams = teams;
+    state.leagues = leagues;
+    state.reasons = reasons;
+  } catch (e) {
+    console.error('failed to load reference data', e);
+    $('teams-empty').textContent = 'Could not load teams. Check your connection or Supabase config (env.js).';
+    $('teams-empty').classList.remove('hidden');
+    return;
+  }
+
+  rebuildLeagueFilter();
+  renderAboutCounts();
+  await Promise.all([refreshVotedToday(), loadGlobalStats()]);
+  renderTeams();
+}
+
+init();
