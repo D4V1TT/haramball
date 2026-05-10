@@ -1,0 +1,8 @@
+# Haramball.com robots.txt
+# All search engines welcome.
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://haramball.com/sitemap.xml
