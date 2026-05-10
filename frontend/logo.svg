@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+  <title>Haramball logo</title>
+  <desc>Bold white H on red circular badge with a black-and-white football centered as the H's crossbar.</desc>
+  <!-- Red badge -->
+  <circle cx="100" cy="100" r="96" fill="#d63031"/>
+  <!-- H verticals -->
+  <rect x="48" y="38" width="22" height="124" fill="#ffffff" rx="2"/>
+  <rect x="130" y="38" width="22" height="124" fill="#ffffff" rx="2"/>
+  <!-- White football body -->
+  <circle cx="100" cy="100" r="28" fill="#ffffff"/>
+  <!-- Black ring outlining the football -->
+  <circle cx="100" cy="100" r="28" fill="none" stroke="#0a0a0a" stroke-width="2.5"/>
+  <!-- Central pentagon (the iconic soccer-ball black pentagon).
+       Regular pentagon centered at (100,100), radius 9.5, top vertex up. -->
+  <polygon points="100,90.5 109.04,97.07 105.58,107.71 94.42,107.71 90.96,97.07" fill="#0a0a0a"/>
+  <!-- Five "stitch" lines from each pentagon vertex outward to the rim -->
+  <line x1="100" y1="90.5"  x2="100" y2="74"   stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="109.04" y1="97.07" x2="124.7" y2="91.85" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="105.58" y1="107.71" x2="115.27" y2="121.18" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="94.42" y1="107.71" x2="84.73" y2="121.18" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="90.96" y1="97.07" x2="75.30" y2="91.85" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
