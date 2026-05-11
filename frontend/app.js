@@ -276,17 +276,24 @@ function openVoteModal(teamId) {
   ).join('');
   $$('.reason-btn', grid).forEach(b => {
     b.addEventListener('click', () => {
+      const wasSelected = b.classList.contains('selected');
+      // Always clear other selections first
       $$('.reason-btn', grid).forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-checked', 'false'); });
-      b.classList.add('selected');
-      b.setAttribute('aria-checked', 'true');
-      state.selectedReason = b.dataset.reason;
-      $('vote-submit').disabled = false;
+      if (wasSelected) {
+        // Clicking the already-selected reason deselects it
+        state.selectedReason = null;
+      } else {
+        b.classList.add('selected');
+        b.setAttribute('aria-checked', 'true');
+        state.selectedReason = b.dataset.reason;
+      }
     });
   });
 
   $('comment').value = '';
   $('char-count').textContent = '0';
-  $('vote-submit').disabled = true;
+  // Vote button is always enabled — reason is optional
+  $('vote-submit').disabled = false;
   $('modal-error').classList.add('hidden');
 
   const m = $('vote-modal');
@@ -304,7 +311,7 @@ function closeVoteModal() {
 }
 
 async function submitVote() {
-  if (!state.selectedTeam || !state.selectedReason) return;
+  if (!state.selectedTeam) return;
   const btn = $('vote-submit');
   const errEl = $('modal-error');
   errEl.classList.add('hidden');
@@ -313,14 +320,14 @@ async function submitVote() {
   try {
     await api.castVote({
       team_id:    state.selectedTeam.id,
-      reason_tag: state.selectedReason,
+      reason_tag: state.selectedReason,  // can be null — reason is optional
       comment:    $('comment').value,
     });
     track('vote_cast', {
       team_id: state.selectedTeam.id,
       league: state.selectedTeam.league,
       confederation: state.selectedTeam.confederation,
-      reason: state.selectedReason,
+      reason: state.selectedReason || 'none',
       has_comment: hasComment
     });
     closeVoteModal();
