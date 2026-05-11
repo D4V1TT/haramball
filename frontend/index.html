@@ -126,6 +126,15 @@
       <span id="vote-status-text">Loading…</span>
     </div>
 
+    <!-- Top voted this week preview -->
+    <div id="top-preview" class="top-preview hidden" aria-label="Most voted teams this week">
+      <div class="top-preview-header">
+        <span class="top-preview-label">🔥 Top voted this week</span>
+        <button class="top-preview-link" type="button" id="top-preview-link">See full leaderboard →</button>
+      </div>
+      <div class="top-preview-list" id="top-preview-list"></div>
+    </div>
+
     <div class="search-bar">
       <input type="text" class="search-input" id="search" placeholder="Search team, league, or country…" aria-label="Search teams" autocomplete="off" />
       <select class="league-filter" id="conf-filter" aria-label="Filter by confederation">

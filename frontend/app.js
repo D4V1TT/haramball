@@ -34,6 +34,31 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ---------- Analytics ----------
+// Fires custom events to Cloudflare Web Analytics.
+// `cfBeacon` is exposed by the Cloudflare beacon script in index.html.
+// We also log to console so events show in dev tools during local testing.
+function track(eventName, props = {}) {
+  try {
+    if (typeof window !== 'undefined' && window.cfBeacon && typeof window.cfBeacon.track === 'function') {
+      window.cfBeacon.track(eventName, props);
+    }
+    // Cloudflare's modern API: window.__cfBeacon._
+    // Fallback: dispatch a custom DOM event that the beacon listens for.
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('cf-analytics-event', {
+        detail: { name: eventName, props }
+      }));
+    }
+  } catch (e) {
+    // Never break the app for analytics failures
+  }
+  // Also log to console so we can see events fire during testing
+  if (typeof console !== 'undefined') {
+    console.log('[analytics]', eventName, props);
+  }
+}
+
 // ---------- Application state ----------
 const state = {
   teams: [],
@@ -55,6 +80,7 @@ function switchView(view) {
   const target = $(`view-${view}`);
   if (target) target.classList.remove('hidden');
   if (view === 'leaderboard') loadLeaderboard();
+  track('view_switched', { view });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 window.switchView = switchView; // exposed for the logo onclick handler
@@ -69,6 +95,55 @@ async function loadGlobalStats() {
     $('about-team-count').textContent = fmtNum(s.active_teams);
   } catch (e) {
     console.error('stats failed', e);
+  }
+}
+
+// ---------- Top voted this week preview ----------
+async function loadTopPreview() {
+  const wrap = $('top-preview');
+  const list = $('top-preview-list');
+  try {
+    const rows = await api.getLeaderboard({ period: 'week', limit: 3 });
+    if (!rows || rows.length === 0) {
+      wrap.classList.add('hidden');
+      return;
+    }
+    list.innerHTML = rows.map(r => {
+      const rank = Number(r.rank);
+      let rankCls = '';
+      if (rank === 1) rankCls = 'gold';
+      else if (rank === 2) rankCls = 'silver';
+      else if (rank === 3) rankCls = 'bronze';
+      const meta = [r.league_name, r.country_name].filter(Boolean).join(' · ');
+      return `<div class="tp-row" data-team="${escapeHtml(r.team_id)}">
+        <div class="tp-rank ${rankCls}">${rank}</div>
+        <div class="tp-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</div>
+        <div class="tp-info">
+          <div class="tp-name">${escapeHtml(r.team_name)}</div>
+          <div class="tp-meta">${escapeHtml(meta)}</div>
+        </div>
+        <div>
+          <div class="tp-votes">${fmtNum(r.vote_count)}</div>
+          <div class="tp-votes-lbl">votes</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Click a top row to open the vote modal for that team
+    const canVote = !state.votedToday.voted;
+    $$('.tp-row', list).forEach(row => {
+      if (!canVote) row.classList.add('disabled');
+      row.addEventListener('click', () => {
+        if (row.classList.contains('disabled')) return;
+        track('top_preview_clicked', { team_id: row.dataset.team });
+        openVoteModal(row.dataset.team);
+      });
+    });
+
+    wrap.classList.remove('hidden');
+  } catch (e) {
+    console.error('top preview failed', e);
+    wrap.classList.add('hidden');
   }
 }
 
@@ -183,6 +258,12 @@ function openVoteModal(teamId) {
   state.selectedTeam = team;
   state.selectedReason = null;
 
+  track('vote_modal_opened', {
+    team_id: team.id,
+    league: team.league,
+    confederation: team.confederation
+  });
+
   $('modal-badge').textContent = getInitials(team.name);
   $('modal-badge').style.background = team.color || '#444';
   $('modal-team-name').textContent = team.name;
@@ -228,19 +309,34 @@ async function submitVote() {
   const errEl = $('modal-error');
   errEl.classList.add('hidden');
   btn.disabled = true; btn.textContent = 'Casting…';
+  const hasComment = ($('comment').value || '').trim().length > 0;
   try {
     await api.castVote({
       team_id:    state.selectedTeam.id,
       reason_tag: state.selectedReason,
       comment:    $('comment').value,
     });
+    track('vote_cast', {
+      team_id: state.selectedTeam.id,
+      league: state.selectedTeam.league,
+      confederation: state.selectedTeam.confederation,
+      reason: state.selectedReason,
+      has_comment: hasComment
+    });
     closeVoteModal();
     showToast(`Vote registered for ${state.selectedTeam.name}`);
-    await Promise.all([refreshVotedToday(), loadGlobalStats()]);
+    await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
     renderTeams();
   } catch (e) {
     let msg = e.message || 'Could not cast vote.';
-    if (e.code === 'P0001' || /already voted/i.test(msg)) msg = 'You\'ve already voted today. Come back tomorrow.';
+    let errorType = 'unknown';
+    if (e.code === 'P0001' || /already voted/i.test(msg)) {
+      msg = 'You\'ve already voted today. Come back tomorrow.';
+      errorType = 'already_voted';
+    } else if (/network/i.test(msg) || /fetch/i.test(msg)) {
+      errorType = 'network';
+    }
+    track('vote_failed', { error_type: errorType, team_id: state.selectedTeam.id });
     errEl.textContent = msg;
     errEl.classList.remove('hidden');
     btn.disabled = false; btn.textContent = 'Cast vote';
@@ -354,7 +450,10 @@ async function init() {
 
   rebuildLeagueFilter();
   renderAboutCounts();
-  await Promise.all([refreshVotedToday(), loadGlobalStats()]);
+  // Wire the "See full leaderboard" link in the top preview
+  const tpLink = $('top-preview-link');
+  if (tpLink) tpLink.addEventListener('click', () => switchView('leaderboard'));
+  await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
   renderTeams();
 }
 

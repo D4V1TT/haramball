@@ -129,6 +129,80 @@ input, select { font-family: inherit; }
 }
 .vote-status.voted .dot { background: var(--accent); }
 
+/* ---------- Top voted preview ---------- */
+.top-preview {
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-elev) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px 14px;
+  margin-bottom: 20px;
+}
+.top-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.top-preview-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+.top-preview-link {
+  background: none; border: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.top-preview-link:hover { background: rgba(214, 48, 49, 0.12); }
+.top-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.tp-row:hover { background: rgba(255, 255, 255, 0.04); }
+.tp-row.disabled { cursor: not-allowed; opacity: 0.6; }
+.tp-row.disabled:hover { background: rgba(255, 255, 255, 0.02); }
+.tp-rank {
+  font-size: 15px; font-weight: 800;
+  color: var(--text-dim);
+  width: 22px; text-align: center;
+}
+.tp-rank.gold { color: var(--gold); }
+.tp-rank.silver { color: var(--silver); }
+.tp-rank.bronze { color: var(--bronze); }
+.tp-badge {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 11px; color: #fff;
+  flex-shrink: 0;
+}
+.tp-info { flex: 1; min-width: 0; }
+.tp-name { font-size: 14px; font-weight: 700; }
+.tp-meta { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.tp-votes {
+  font-size: 14px; font-weight: 800;
+  color: var(--accent);
+}
+.tp-votes-lbl { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; text-align: right; }
+
 /* ---------- Search & filters ---------- */
 .search-bar {
   display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
