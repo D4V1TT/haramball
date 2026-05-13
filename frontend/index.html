@@ -112,7 +112,27 @@
 <section id="view-vote" class="view">
   <div class="hero">
     <h1>Who's playing the<br><span class="accent">worst football</span> right now?</h1>
-    <p>Vote for the team that bores you to death. Time-wasting, parking the bus, anti-football. You decide who's serving haramball this week.</p>
+    <p class="hero-sub">Vote for the team serving haramball this week. Time-wasting, parking the bus, anti-football. You decide.</p>
+
+    <!-- HERO SEARCH — the primary action -->
+    <div class="hero-search">
+      <div class="hero-search-wrap">
+        <svg class="hero-search-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" class="hero-search-input" id="search" placeholder="Search any team to vote against…" aria-label="Search teams to vote against" autocomplete="off" />
+        <button class="hero-search-clear hidden" id="search-clear" type="button" aria-label="Clear search">×</button>
+      </div>
+      <div class="hero-search-hints">
+        <span class="hero-hint-label">Try:</span>
+        <button class="hero-hint" type="button" data-hint="Chelsea">Chelsea</button>
+        <button class="hero-hint" type="button" data-hint="Premier League">Premier League</button>
+        <button class="hero-hint" type="button" data-hint="Juventus">Juventus</button>
+        <button class="hero-hint" type="button" data-hint="Atlético">Atlético</button>
+      </div>
+    </div>
+
     <div class="hero-stats" id="hero-stats" aria-live="polite">
       <div class="hero-stat"><div class="num" id="stat-votes">—</div><div class="lbl">Total votes</div></div>
       <div class="hero-stat"><div class="num" id="stat-week">—</div><div class="lbl">This week</div></div>
@@ -135,8 +155,8 @@
       <div class="top-preview-list" id="top-preview-list"></div>
     </div>
 
-    <div class="search-bar">
-      <input type="text" class="search-input" id="search" placeholder="Search team, league, or country…" aria-label="Search teams" autocomplete="off" />
+    <!-- Filters row (search moved to hero) -->
+    <div class="filters-bar">
       <select class="league-filter" id="conf-filter" aria-label="Filter by confederation">
         <option value="all">All confederations</option>
         <option value="UEFA">UEFA (Europe)</option>

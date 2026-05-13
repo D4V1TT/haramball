@@ -102,6 +102,7 @@ async function loadGlobalStats() {
 async function loadTopPreview() {
   const wrap = $('top-preview');
   const list = $('top-preview-list');
+  if (!wrap || !list) return;  // Elements might not exist in older HTML — skip gracefully
   try {
     const rows = await api.getLeaderboard({ period: 'week', limit: 3 });
     if (!rows || rows.length === 0) {
@@ -428,22 +429,28 @@ async function init() {
   // Without this, every keystroke triggers a full 240-card grid render,
   // which was the main cause of poor INP (interaction latency).
   let searchTimer = null;
-  $('search').addEventListener('input', e => {
-    const val = e.target.value;
-    $('search-clear').classList.toggle('hidden', !val);
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      state.searchQuery = val;
+  const searchInput = $('search');
+  const searchClear = $('search-clear');  // optional - might not exist in older HTML
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      const val = e.target.value;
+      if (searchClear) searchClear.classList.toggle('hidden', !val);
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.searchQuery = val;
+        renderTeams();
+      }, 120);
+    });
+  }
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      state.searchQuery = '';
+      searchClear.classList.add('hidden');
+      searchInput.focus();
       renderTeams();
-    }, 120);
-  });
-  $('search-clear').addEventListener('click', () => {
-    $('search').value = '';
-    state.searchQuery = '';
-    $('search-clear').classList.add('hidden');
-    $('search').focus();
-    renderTeams();
-  });
+    });
+  }
   // Hint chips below the hero search — fill and trigger
   $$('.hero-hint').forEach(btn => {
     btn.addEventListener('click', () => {
