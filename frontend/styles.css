@@ -203,24 +203,116 @@ input, select { font-family: inherit; }
 }
 .tp-votes-lbl { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; text-align: right; }
 
-/* ---------- Search & filters ---------- */
-.search-bar {
-  display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+/* ---------- HERO SEARCH (primary action) ---------- */
+.hero-sub {
+  margin-bottom: 28px;
 }
-.search-input {
-  flex: 1; min-width: 220px;
-  background: var(--bg-elev); border: 1px solid var(--border);
-  color: var(--text); padding: 12px 16px; border-radius: var(--radius-md);
-  font-size: 15px;
-  transition: border-color 0.15s;
+.hero-search {
+  margin: 0 auto 28px;
+  max-width: 640px;
+  width: 100%;
 }
-.search-input::placeholder { color: var(--text-dim); }
-.search-input:focus { outline: none; border-color: var(--accent); }
+.hero-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.hero-search-icon {
+  position: absolute;
+  left: 22px;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 2;
+  transition: color 0.15s;
+}
+.hero-search-input {
+  width: 100%;
+  background: var(--bg-elev);
+  border: 2px solid var(--border);
+  color: var(--text);
+  padding: 18px 56px 18px 60px;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 500;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.1s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+.hero-search-input::placeholder {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.hero-search-input:hover {
+  border-color: var(--border-strong);
+}
+.hero-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 6px rgba(214, 48, 49, 0.15), 0 4px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+.hero-search-input:focus ~ .hero-search-icon { color: var(--accent); }
+.hero-search-clear {
+  position: absolute;
+  right: 14px;
+  background: var(--bg-hover);
+  border: none;
+  color: var(--text-muted);
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 2;
+  transition: background 0.15s, color 0.15s;
+}
+.hero-search-clear:hover { background: var(--accent); color: #fff; }
+.hero-search-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.hero-hint-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-right: 2px;
+}
+.hero-hint {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.hero-hint:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ---------- Filters row (below the hero) ---------- */
+.filters-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
 .league-filter {
   background: var(--bg-elev); border: 1px solid var(--border);
   color: var(--text); padding: 12px 14px; border-radius: var(--radius-md);
   font-size: 14px; cursor: pointer;
-  min-width: 0;
+  flex: 1; min-width: 0;
 }
 .league-filter:focus { outline: none; border-color: var(--accent); }
 
@@ -364,6 +456,7 @@ input, select { font-family: inherit; }
   justify-content: center;
   gap: 18px;
   margin-bottom: 18px;
+  min-height: 38px;  /* Reserve space so page doesn't shift when icons render */
 }
 .footer-socials a {
   display: inline-flex;
@@ -375,6 +468,12 @@ input, select { font-family: inherit; }
   border: 1px solid var(--border);
   color: var(--text-muted);
   transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  flex-shrink: 0;  /* Don't let icons squish */
+}
+.footer-socials a svg {
+  width: 22px;
+  height: 22px;
+  display: block;  /* Removes inline-element baseline gap */
 }
 .footer-socials a:hover {
   background: var(--accent);

@@ -226,12 +226,19 @@ function renderTeams() {
   if (capped.length < list.length) {
     meta.textContent = `Showing 240 of ${list.length} matching teams (${state.teams.length} total). Refine your search.`;
   }
+  // Note: click handler is attached once during init() using event delegation.
+  // See bindGridClickHandler() — we don't re-attach handlers on every render.
+}
 
-  $$('.team-card', grid).forEach(card => {
-    card.addEventListener('click', () => {
-      if (card.classList.contains('disabled')) return;
-      openVoteModal(card.dataset.team);
-    });
+// Attached ONCE during init - one click handler for the whole grid (event delegation)
+// This avoids re-attaching 240 listeners on every render, fixing the INP performance issue.
+function bindGridClickHandler() {
+  const grid = $('teams-grid');
+  grid.addEventListener('click', (e) => {
+    const card = e.target.closest('.team-card');
+    if (!card) return;
+    if (card.classList.contains('disabled')) return;
+    openVoteModal(card.dataset.team);
   });
 }
 
@@ -417,7 +424,42 @@ async function init() {
     loadLeaderboard();
   }));
 
-  $('search').addEventListener('input', e => { state.searchQuery = e.target.value; renderTeams(); });
+  // Debounce search: wait 120ms after typing stops before re-rendering.
+  // Without this, every keystroke triggers a full 240-card grid render,
+  // which was the main cause of poor INP (interaction latency).
+  let searchTimer = null;
+  $('search').addEventListener('input', e => {
+    const val = e.target.value;
+    $('search-clear').classList.toggle('hidden', !val);
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.searchQuery = val;
+      renderTeams();
+    }, 120);
+  });
+  $('search-clear').addEventListener('click', () => {
+    $('search').value = '';
+    state.searchQuery = '';
+    $('search-clear').classList.add('hidden');
+    $('search').focus();
+    renderTeams();
+  });
+  // Hint chips below the hero search — fill and trigger
+  $$('.hero-hint').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.hint;
+      $('search').value = val;
+      state.searchQuery = val;
+      $('search-clear').classList.remove('hidden');
+      $('search').focus();
+      renderTeams();
+      // Scroll the grid into view smoothly so they see the results
+      window.scrollTo({
+        top: $('teams-grid').offsetTop - 80,
+        behavior: 'smooth'
+      });
+    });
+  });
   $('conf-filter').addEventListener('change', e => {
     state.filterConf = e.target.value;
     rebuildLeagueFilter();
@@ -457,6 +499,7 @@ async function init() {
 
   rebuildLeagueFilter();
   renderAboutCounts();
+  bindGridClickHandler();  // Attach grid click handler ONCE (event delegation)
   // Wire the "See full leaderboard" link in the top preview
   const tpLink = $('top-preview-link');
   if (tpLink) tpLink.addEventListener('click', () => switchView('leaderboard'));
