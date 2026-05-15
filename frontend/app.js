@@ -431,7 +431,8 @@ async function init() {
   let searchTimer = null;
   const searchInput = $('search');
   const searchClear = $('search-clear');  // optional - might not exist in older HTML
-  const searchIcon = document.querySelector('.search-icon');  // magnifying glass
+  // Magnifying glass icon - selector covers both naming variants
+  const searchIcon = document.querySelector('.hero-search-icon, .search-icon');
 
   // Smooth-scroll the teams grid into view. Used by Enter key, icon click, hint chips.
   function scrollToTeams() {
