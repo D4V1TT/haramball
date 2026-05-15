@@ -431,6 +431,16 @@ async function init() {
   let searchTimer = null;
   const searchInput = $('search');
   const searchClear = $('search-clear');  // optional - might not exist in older HTML
+  const searchIcon = document.querySelector('.search-icon');  // magnifying glass
+
+  // Smooth-scroll the teams grid into view. Used by Enter key, icon click, hint chips.
+  function scrollToTeams() {
+    const grid = $('teams-grid');
+    if (!grid) return;
+    const offset = grid.getBoundingClientRect().top + window.pageYOffset - 80;
+    window.scrollTo({ top: offset, behavior: 'smooth' });
+  }
+
   if (searchInput) {
     searchInput.addEventListener('input', e => {
       const val = e.target.value;
@@ -440,6 +450,30 @@ async function init() {
         state.searchQuery = val;
         renderTeams();
       }, 120);
+    });
+    // Pressing Enter: commit search immediately and jump to results
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchTimer) clearTimeout(searchTimer);
+        state.searchQuery = searchInput.value;
+        renderTeams();
+        searchInput.blur();  // close mobile keyboard
+        scrollToTeams();
+      }
+    });
+  }
+  // Magnifying-glass icon: clicking it acts like Enter
+  if (searchIcon) {
+    searchIcon.style.pointerEvents = 'auto';
+    searchIcon.style.cursor = 'pointer';
+    searchIcon.addEventListener('click', () => {
+      if (!searchInput) return;
+      if (searchTimer) clearTimeout(searchTimer);
+      state.searchQuery = searchInput.value;
+      renderTeams();
+      searchInput.blur();
+      scrollToTeams();
     });
   }
   if (searchClear) {
@@ -457,14 +491,11 @@ async function init() {
       const val = btn.dataset.hint;
       $('search').value = val;
       state.searchQuery = val;
-      $('search-clear').classList.remove('hidden');
+      const sc = $('search-clear');
+      if (sc) sc.classList.remove('hidden');
       $('search').focus();
       renderTeams();
-      // Scroll the grid into view smoothly so they see the results
-      window.scrollTo({
-        top: $('teams-grid').offsetTop - 80,
-        behavior: 'smooth'
-      });
+      scrollToTeams();
     });
   });
   $('conf-filter').addEventListener('change', e => {
