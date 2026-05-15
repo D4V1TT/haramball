@@ -414,6 +414,36 @@ function renderAboutCounts() {
   $('about-league-count').textContent = fmtNum(state.leagues.length);
 }
 
+// Pick 3 random teams from the loaded set and turn them into "Try:" chips below the search.
+// Different teams every page load - keeps the homepage feeling alive and surfaces variety.
+function renderRandomHints() {
+  const container = $('hero-search-hints');
+  if (!container || !state.teams || state.teams.length === 0) return;
+
+  // Pick 3 distinct random teams. Bias slightly toward bigger leagues so they're recognizable.
+  // We pick from the full pool but skip teams with very short names (often acronyms users don't know).
+  const pool = state.teams.filter(t => t.name && t.name.length >= 4);
+  if (pool.length < 3) return;
+  const picks = [];
+  const usedIds = new Set();
+  let safety = 0;
+  while (picks.length < 3 && safety < 50) {
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    if (!usedIds.has(t.id)) {
+      usedIds.add(t.id);
+      picks.push(t);
+    }
+    safety++;
+  }
+
+  // Render the chips. Keep the existing "Try:" label, replace the rest.
+  const label = '<span class="hero-hint-label">Try:</span>';
+  const chips = picks.map(t =>
+    `<button class="hero-hint" type="button" data-hint="${escapeHtml(t.name)}">${escapeHtml(t.name)}</button>`
+  ).join('');
+  container.innerHTML = label + chips;
+}
+
 // ---------- Bootstrap ----------
 async function init() {
   // Wire UI events first so the page is responsive even before data loads
@@ -486,9 +516,12 @@ async function init() {
       renderTeams();
     });
   }
-  // Hint chips below the hero search — fill and trigger
-  $$('.hero-hint').forEach(btn => {
-    btn.addEventListener('click', () => {
+  // Hint chips: event delegation on container so it works for dynamically-inserted chips too
+  const hintsContainer = $('hero-search-hints');
+  if (hintsContainer) {
+    hintsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.hero-hint');
+      if (!btn) return;
       const val = btn.dataset.hint;
       $('search').value = val;
       state.searchQuery = val;
@@ -498,7 +531,7 @@ async function init() {
       renderTeams();
       scrollToTeams();
     });
-  });
+  }
   $('conf-filter').addEventListener('change', e => {
     state.filterConf = e.target.value;
     rebuildLeagueFilter();
@@ -538,6 +571,7 @@ async function init() {
 
   rebuildLeagueFilter();
   renderAboutCounts();
+  renderRandomHints();  // Pick 3 random teams for the "Try:" chips
   bindGridClickHandler();  // Attach grid click handler ONCE (event delegation)
   // Wire the "See full leaderboard" link in the top preview
   const tpLink = $('top-preview-link');

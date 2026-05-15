@@ -124,12 +124,9 @@
         <input type="text" class="hero-search-input" id="search" placeholder="Search any team to vote against…" aria-label="Search teams to vote against" autocomplete="off" />
         <button class="hero-search-clear hidden" id="search-clear" type="button" aria-label="Clear search">×</button>
       </div>
-      <div class="hero-search-hints">
+      <div class="hero-search-hints" id="hero-search-hints">
         <span class="hero-hint-label">Try:</span>
-        <button class="hero-hint" type="button" data-hint="Chelsea">Chelsea</button>
-        <button class="hero-hint" type="button" data-hint="Premier League">Premier League</button>
-        <button class="hero-hint" type="button" data-hint="Juventus">Juventus</button>
-        <button class="hero-hint" type="button" data-hint="Atlético">Atlético</button>
+        <!-- Hint chips are inserted here by app.js (renderRandomHints) -->
       </div>
     </div>
 
