@@ -6,7 +6,7 @@
  * to a public repo: the anon key is meant to be public, and
  * Row Level Security on the database protects you.
  * ============================================================ */
-window.HARAMBALL_CONFIG = {
+const PRODUCTION = {
   SUPABASE_URL:      'https://wolleqnvaonerzsomzvd.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvbGxlcW52YW9uZXJ6c29tenZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTE1NTUsImV4cCI6MjA5MzkyNzU1NX0.eIG9qK4SdTsO3V5KVazvSCDZGKJ-9dN1w9ql5akNQ6M',
   ENV: 'production'
