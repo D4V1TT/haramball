@@ -447,7 +447,12 @@ function renderRandomHints() {
 // ---------- Bootstrap ----------
 async function init() {
   // Wire UI events first so the page is responsive even before data loads
-  $$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+  $$('.nav-btn').forEach(b => {
+    // Only attach the view-switching handler to buttons, not anchor links
+    if (b.tagName === 'BUTTON') {
+      b.addEventListener('click', () => switchView(b.dataset.view));
+    }
+  });
   $$('.lb-tab').forEach(t => t.addEventListener('click', () => {
     $$('.lb-tab').forEach(x => x.classList.remove('active'));
     t.classList.add('active');

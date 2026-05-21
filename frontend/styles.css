@@ -72,14 +72,17 @@ input, select { font-family: inherit; }
 .logo-text span { color: var(--accent); }
 
 .nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.nav button {
+.nav button, .nav a.nav-btn {
   background: none; border: 1px solid transparent;
   color: var(--text-muted); padding: 8px 14px; border-radius: 8px;
   font-size: 14px; font-weight: 500; cursor: pointer;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
+  text-decoration: none;
+  display: inline-block;
+  font-family: inherit;
 }
-.nav button:hover { color: var(--text); background: var(--bg-elev); }
-.nav button.active { color: var(--text); background: var(--bg-elev); border-color: var(--border); }
+.nav button:hover, .nav a.nav-btn:hover { color: var(--text); background: var(--bg-elev); }
+.nav button.active, .nav a.nav-btn.active { color: var(--text); background: var(--bg-elev); border-color: var(--border); }
 
 /* ---------- Hero ---------- */
 .hero {
@@ -614,7 +617,7 @@ input, select { font-family: inherit; }
   .hero-stats { gap: 28px; margin-top: 24px; }
   .hero-stat .num { font-size: 22px; }
   .page { padding: 16px 16px 60px; }
-  .nav button { padding: 6px 10px; font-size: 13px; }
+  .nav button, .nav a.nav-btn { padding: 6px 10px; font-size: 13px; }
   .logo { font-size: 21px; }
   .logo-mark { width: 28px; height: 28px; }
   .teams-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
