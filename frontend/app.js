@@ -444,6 +444,69 @@ function renderRandomHints() {
   container.innerHTML = label + chips;
 }
 
+// Render quick-vote cards for canonical haramball teams.
+// Uses the usual suspects (not current top-voted) to avoid a leaderboard feedback loop.
+// Tapping a card opens the existing vote modal — same flow as searching for a team.
+function renderQuickVote() {
+  const grid = $('quick-vote-grid');
+  const wrap = $('quick-vote');
+  if (!grid || !wrap || !state.teams || state.teams.length === 0) return;
+
+  // Canonical haramball clubs. We match by ID first, then by name (case-insensitive)
+  // so this works regardless of the exact ID scheme in the database.
+  const canonical = [
+    { id: 'arsenal',          names: ['arsenal'] },
+    { id: 'atletico-madrid',  names: ['atlético madrid', 'atletico madrid', 'atlético de madrid', 'atletico'] },
+    { id: 'getafe',           names: ['getafe', 'getafe cf'] },
+    { id: 'juventus',         names: ['juventus'] },
+    { id: 'ac-milan',         names: ['ac milan', 'milan'] },
+    { id: 'burnley',          names: ['burnley'] },
+    { id: 'inter',            names: ['inter', 'inter milan', 'internazionale'] },
+    { id: 'man-city',         names: ['manchester city', 'man city'] }
+  ];
+
+  const picks = [];
+  const usedIds = new Set();
+  for (const c of canonical) {
+    let team = state.teams.find(t => t.id === c.id);
+    if (!team) {
+      team = state.teams.find(t =>
+        t.name && c.names.includes(t.name.trim().toLowerCase())
+      );
+    }
+    if (team && !usedIds.has(team.id)) {
+      usedIds.add(team.id);
+      picks.push(team);
+    }
+    if (picks.length >= 5) break;
+  }
+
+  // Fallback: if almost none of the canonical IDs matched (DB uses different IDs),
+  // hide the section rather than show something broken.
+  if (picks.length < 3) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  grid.innerHTML = picks.map(t => `
+    <button class="qv-card" type="button" data-team="${escapeHtml(t.id)}" aria-label="Vote against ${escapeHtml(t.name)}">
+      <span class="qv-badge" style="background:${escapeHtml(t.color || '#444')}">${escapeHtml(getInitials(t.name))}</span>
+      <span class="qv-info">
+        <span class="qv-name">${escapeHtml(t.name)}</span>
+        <span class="qv-action">Vote ⚖</span>
+      </span>
+    </button>
+  `).join('');
+
+  // Event delegation: tapping a card opens the vote modal for that team.
+  grid.querySelectorAll('.qv-card').forEach(card => {
+    card.addEventListener('click', () => {
+      track('quick_vote_clicked', { team_id: card.dataset.team });
+      openVoteModal(card.dataset.team);
+    });
+  });
+}
+
 // ---------- Bootstrap ----------
 async function init() {
   // Wire UI events first so the page is responsive even before data loads
@@ -577,6 +640,7 @@ async function init() {
   rebuildLeagueFilter();
   renderAboutCounts();
   renderRandomHints();  // Pick 3 random teams for the "Try:" chips
+  renderQuickVote();    // Canonical haramball teams as instant-vote cards
   bindGridClickHandler();  // Attach grid click handler ONCE (event delegation)
   // Wire the "See full leaderboard" link in the top preview
   const tpLink = $('top-preview-link');
