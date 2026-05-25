@@ -35,11 +35,16 @@ function escapeHtml(s) {
 }
 
 // ---------- Analytics ----------
+// Fires custom events to Cloudflare Web Analytics.
+// `cfBeacon` is exposed by the Cloudflare beacon script in index.html.
+// We also log to console so events show in dev tools during local testing.
 function track(eventName, props = {}) {
   try {
     if (typeof window !== 'undefined' && window.cfBeacon && typeof window.cfBeacon.track === 'function') {
       window.cfBeacon.track(eventName, props);
     }
+    // Cloudflare's modern API: window.__cfBeacon._
+    // Fallback: dispatch a custom DOM event that the beacon listens for.
     if (typeof window !== 'undefined' && window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent('cf-analytics-event', {
         detail: { name: eventName, props }
@@ -48,6 +53,7 @@ function track(eventName, props = {}) {
   } catch (e) {
     // Never break the app for analytics failures
   }
+  // Also log to console so we can see events fire during testing
   if (typeof console !== 'undefined') {
     console.log('[analytics]', eventName, props);
   }
@@ -65,7 +71,6 @@ const state = {
   filterLeague: 'all',
   searchQuery: '',
   lbPeriod: 'week',
-  quickTeams: [] // Storing top weekly culprits dynamically here
 };
 
 // ---------- View routing ----------
@@ -78,7 +83,7 @@ function switchView(view) {
   track('view_switched', { view });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-window.switchView = switchView; 
+window.switchView = switchView; // exposed for the logo onclick handler
 
 // ---------- Stats / hero ----------
 async function loadGlobalStats() {
@@ -97,7 +102,7 @@ async function loadGlobalStats() {
 async function loadTopPreview() {
   const wrap = $('top-preview');
   const list = $('top-preview-list');
-  if (!wrap || !list) return;  
+  if (!wrap || !list) return;  // Elements might not exist in older HTML — skip gracefully
   try {
     const rows = await api.getLeaderboard({ period: 'week', limit: 3 });
     if (!rows || rows.length === 0) {
@@ -125,6 +130,7 @@ async function loadTopPreview() {
       </div>`;
     }).join('');
 
+    // Click a top row to open the vote modal for that team
     const canVote = !state.votedToday.voted;
     $$('.tp-row', list).forEach(row => {
       if (!canVote) row.classList.add('disabled');
@@ -199,6 +205,7 @@ function renderTeams() {
   }
   empty.classList.add('hidden');
 
+  // Cap render to 240 cards per pass to keep DOM cheap on mobile
   const capped = list.slice(0, 240);
   grid.innerHTML = capped.map(t => {
     const isMyVote = !canVote && t.id === myLastTeam;
@@ -220,8 +227,12 @@ function renderTeams() {
   if (capped.length < list.length) {
     meta.textContent = `Showing 240 of ${list.length} matching teams (${state.teams.length} total). Refine your search.`;
   }
+  // Note: click handler is attached once during init() using event delegation.
+  // See bindGridClickHandler() — we don't re-attach handlers on every render.
 }
 
+// Attached ONCE during init - one click handler for the whole grid (event delegation)
+// This avoids re-attaching 240 listeners on every render, fixing the INP performance issue.
 function bindGridClickHandler() {
   const grid = $('teams-grid');
   grid.addEventListener('click', (e) => {
@@ -232,7 +243,7 @@ function bindGridClickHandler() {
   });
 }
 
-// ---------- League filter ----------
+// ---------- League filter (depends on confederation choice) ----------
 function rebuildLeagueFilter() {
   const sel = $('league-filter');
   const current = sel.value;
@@ -243,6 +254,7 @@ function rebuildLeagueFilter() {
   sel.innerHTML = `<option value="all">All leagues</option>` + leagues.map(l =>
     `<option value="${escapeHtml(l.name)}">${escapeHtml(l.name)} — ${escapeHtml(l.country)}</option>`
   ).join('');
+  // Preserve previous selection if still valid
   sel.value = leagues.some(l => l.name === current) ? current : 'all';
   state.filterLeague = sel.value;
 }
@@ -265,6 +277,7 @@ function openVoteModal(teamId) {
   $('modal-team-name').textContent = team.name;
   $('modal-team-meta').textContent = [team.league, team.country].filter(Boolean).join(' · ');
 
+  // Render reason buttons
   const grid = $('reasons-grid');
   grid.innerHTML = state.reasons.map(r =>
     `<button class="reason-btn" data-reason="${escapeHtml(r.code)}" type="button" role="radio" aria-checked="false">${escapeHtml(r.label)}</button>`
@@ -272,8 +285,10 @@ function openVoteModal(teamId) {
   $$('.reason-btn', grid).forEach(b => {
     b.addEventListener('click', () => {
       const wasSelected = b.classList.contains('selected');
+      // Always clear other selections first
       $$('.reason-btn', grid).forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-checked', 'false'); });
       if (wasSelected) {
+        // Clicking the already-selected reason deselects it
         state.selectedReason = null;
       } else {
         b.classList.add('selected');
@@ -285,6 +300,7 @@ function openVoteModal(teamId) {
 
   $('comment').value = '';
   $('char-count').textContent = '0';
+  // Vote button is always enabled — reason is optional
   $('vote-submit').disabled = false;
   $('modal-error').classList.add('hidden');
 
@@ -312,7 +328,7 @@ async function submitVote() {
   try {
     await api.castVote({
       team_id:    state.selectedTeam.id,
-      reason_tag: state.selectedReason,  
+      reason_tag: state.selectedReason,  // can be null — reason is optional
       comment:    $('comment').value,
     });
     track('vote_cast', {
@@ -324,7 +340,7 @@ async function submitVote() {
     });
     closeVoteModal();
     showToast(`Vote registered for ${state.selectedTeam.name}`);
-    await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview(), refreshQuickVoteData()]);
+    await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
     renderTeams();
   } catch (e) {
     let msg = e.message || 'Could not cast vote.';
@@ -398,11 +414,14 @@ function renderAboutCounts() {
   $('about-league-count').textContent = fmtNum(state.leagues.length);
 }
 
-// ---------- Random Search Hints ----------
+// Pick 3 random teams from the loaded set and turn them into "Try:" chips below the search.
+// Different teams every page load - keeps the homepage feeling alive and surfaces variety.
 function renderRandomHints() {
   const container = $('hero-search-hints');
   if (!container || !state.teams || state.teams.length === 0) return;
 
+  // Pick 3 distinct random teams. Bias slightly toward bigger leagues so they're recognizable.
+  // We pick from the full pool but skip teams with very short names (often acronyms users don't know).
   const pool = state.teams.filter(t => t.name && t.name.length >= 4);
   if (pool.length < 3) return;
   const picks = [];
@@ -417,6 +436,7 @@ function renderRandomHints() {
     safety++;
   }
 
+  // Render the chips. Keep the existing "Try:" label, replace the rest.
   const label = '<span class="hero-hint-label">Try:</span>';
   const chips = picks.map(t =>
     `<button class="hero-hint" type="button" data-hint="${escapeHtml(t.name)}">${escapeHtml(t.name)}</button>`
@@ -424,66 +444,59 @@ function renderRandomHints() {
   container.innerHTML = label + chips;
 }
 
-// ---------- Dynamic Quick Vote Cards ----------
-// Safely pulls live data points directly using your styles (.qv-card, .qv-badge, .qv-info, etc.)
-function renderQuickVote() {
+// Render quick-vote cards from the LIVE overall leaderboard (all-time top teams).
+// Tapping a card opens the existing vote modal — same flow as searching for a team.
+//
+// NOTE (design decision): these cards show the current top-voted teams. This creates
+// a mild feedback loop — easy-to-tap leaders may accrue more votes simply for being
+// the default buttons, which can entrench the leaderboard order. Chosen deliberately
+// to keep the cards always-current and zero-maintenance. If the leaderboard ever feels
+// "stuck", consider excluding rank #1 or mixing in canonical teams.
+async function renderQuickVote() {
   const grid = $('quick-vote-grid');
   const wrap = $('quick-vote');
   if (!grid || !wrap) return;
 
-  if (!state.quickTeams || state.quickTeams.length === 0) {
+  let rows;
+  try {
+    rows = await api.getLeaderboard({ period: 'all', limit: 5 });
+  } catch (e) {
+    // If the leaderboard fetch fails, hide the section rather than show an error.
     wrap.style.display = 'none';
     return;
   }
 
-  // Cross-reference leaderboard IDs with master team object details
-  const picks = [];
-  state.quickTeams.forEach(item => {
-    const team = state.teams.find(t => t.id === item.team_id);
-    if (team) picks.push(team);
-  });
-
-  if (picks.length < 3) {
+  // Need at least a few teams to make the row worthwhile.
+  if (!Array.isArray(rows) || rows.length < 3) {
     wrap.style.display = 'none';
     return;
   }
 
-  wrap.style.display = 'block';
-  grid.innerHTML = picks.map(t => `
-    <button class="qv-card" type="button" data-team="${escapeHtml(t.id)}" aria-label="Vote against ${escapeHtml(t.name)}">
-      <span class="qv-badge" style="background:${escapeHtml(t.color || '#444')}">${escapeHtml(getInitials(t.name))}</span>
+  wrap.style.display = '';
+  grid.innerHTML = rows.map(r => `
+    <button class="qv-card" type="button" data-team="${escapeHtml(r.team_id)}" aria-label="Vote against ${escapeHtml(r.team_name)}">
+      <span class="qv-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</span>
       <span class="qv-info">
-        <span class="qv-name">${escapeHtml(t.name)}</span>
+        <span class="qv-name">${escapeHtml(r.team_name)}</span>
         <span class="qv-action">Vote ⚖</span>
       </span>
     </button>
   `).join('');
 
+  // Event delegation: tapping a card opens the vote modal for that team.
   grid.querySelectorAll('.qv-card').forEach(card => {
-    const canVote = !state.votedToday.voted;
-    if (!canVote) card.classList.add('disabled');
-    
     card.addEventListener('click', () => {
-      if (card.classList.contains('disabled')) return;
       track('quick_vote_clicked', { team_id: card.dataset.team });
       openVoteModal(card.dataset.team);
     });
   });
 }
 
-// Refresh quick vote reference block in isolation when structural changes pass
-async function refreshQuickVoteData() {
-  try {
-    state.quickTeams = await api.getLeaderboard({ period: 'week', limit: 4 });
-    renderQuickVote();
-  } catch (e) {
-    console.error('failed loading dynamic quick vote references', e);
-  }
-}
-
 // ---------- Bootstrap ----------
 async function init() {
+  // Wire UI events first so the page is responsive even before data loads
   $$('.nav-btn').forEach(b => {
+    // Only attach the view-switching handler to buttons, not anchor links
     if (b.tagName === 'BUTTON') {
       b.addEventListener('click', () => switchView(b.dataset.view));
     }
@@ -495,11 +508,16 @@ async function init() {
     loadLeaderboard();
   }));
 
+  // Debounce search: wait 120ms after typing stops before re-rendering.
+  // Without this, every keystroke triggers a full 240-card grid render,
+  // which was the main cause of poor INP (interaction latency).
   let searchTimer = null;
   const searchInput = $('search');
-  const searchClear = $('search-clear');  
+  const searchClear = $('search-clear');  // optional - might not exist in older HTML
+  // Magnifying glass icon - selector covers both naming variants
   const searchIcon = document.querySelector('.hero-search-icon, .search-icon');
 
+  // Smooth-scroll the teams grid into view. Used by Enter key, icon click, hint chips.
   function scrollToTeams() {
     const grid = $('teams-grid');
     if (!grid) return;
@@ -517,17 +535,19 @@ async function init() {
         renderTeams();
       }, 120);
     });
+    // Pressing Enter: commit search immediately and jump to results
     searchInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (searchTimer) clearTimeout(searchTimer);
         state.searchQuery = searchInput.value;
         renderTeams();
-        searchInput.blur();  
+        searchInput.blur();  // close mobile keyboard
         scrollToTeams();
       }
     });
   }
+  // Magnifying-glass icon: clicking it acts like Enter
   if (searchIcon) {
     searchIcon.style.pointerEvents = 'auto';
     searchIcon.style.cursor = 'pointer';
@@ -549,6 +569,7 @@ async function init() {
       renderTeams();
     });
   }
+  // Hint chips: event delegation on container so it works for dynamically-inserted chips too
   const hintsContainer = $('hero-search-hints');
   if (hintsContainer) {
     hintsContainer.addEventListener('click', (e) => {
@@ -586,17 +607,14 @@ async function init() {
   });
   $('vote-submit').addEventListener('click', submitVote);
 
+  // Load reference data + voted-today + stats in parallel.
   try {
-    const [teams, leagues, reasons, weeklyLeaderboard] = await Promise.all([
-      api.getTeams(), 
-      api.getLeagues(), 
-      api.getReasonTags(),
-      api.getLeaderboard({ period: 'week', limit: 4 }) // Safely pull weekly top items
+    const [teams, leagues, reasons] = await Promise.all([
+      api.getTeams(), api.getLeagues(), api.getReasonTags()
     ]);
     state.teams = teams;
     state.leagues = leagues;
     state.reasons = reasons;
-    state.quickTeams = weeklyLeaderboard;
   } catch (e) {
     console.error('failed to load reference data', e);
     $('teams-empty').textContent = 'Could not load teams. Check your connection or Supabase config (env.js).';
@@ -606,10 +624,10 @@ async function init() {
 
   rebuildLeagueFilter();
   renderAboutCounts();
-  renderRandomHints();  
-  renderQuickVote();    
-  bindGridClickHandler();  
-  
+  renderRandomHints();  // Pick 3 random teams for the "Try:" chips
+  renderQuickVote();    // Live overall leaderboard as instant-vote cards (async, fire-and-forget)
+  bindGridClickHandler();  // Attach grid click handler ONCE (event delegation)
+  // Wire the "See full leaderboard" link in the top preview
   const tpLink = $('top-preview-link');
   if (tpLink) tpLink.addEventListener('click', () => switchView('leaderboard'));
   await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);

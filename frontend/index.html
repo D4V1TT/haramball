@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+<!-- Primary SEO -->
 <title>Haramball — Vote on the Worst Football of the Week</title>
 <meta name="description" content="Vote for the worst football of the week. Live haramball leaderboards across 960+ clubs in 82 leagues worldwide. Anti-football. Time-wasting. You decide." />
 <meta name="keywords" content="haramball, worst football team, anti-football, parking the bus, time wasting football, defensive football, boring football vote, haramball leaderboard, haramball team of the week" />
@@ -12,6 +13,7 @@
 <meta name="robots" content="index, follow, max-image-preview:large" />
 <meta name="author" content="haramball.com" />
 
+<!-- Open Graph (Facebook, LinkedIn, Discord, etc.) -->
 <meta property="og:site_name" content="Haramball" />
 <meta property="og:title" content="Haramball — Vote the Worst Football of the Week" />
 <meta property="og:description" content="Who's playing the worst football right now? Vote across 82 leagues and 960+ clubs. Live weekly, monthly, and all-time haramball leaderboards." />
@@ -23,6 +25,7 @@
 <meta property="og:image:alt" content="Haramball — vote the worst football of the week" />
 <meta property="og:locale" content="en_US" />
 
+<!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@haramball11" />
 <meta name="twitter:creator" content="@haramball11" />
@@ -31,11 +34,13 @@
 <meta name="twitter:image" content="https://haramball.com/og-image.png" />
 <meta name="twitter:image:alt" content="Haramball — vote the worst football of the week" />
 
+<!-- Icons -->
 <link rel="icon" type="image/svg+xml" href="logo.svg" />
 <link rel="alternate icon" href="favicon.ico" />
 <link rel="apple-touch-icon" href="logo-180x180.png" />
 <link rel="manifest" href="manifest.json" />
 
+<!-- Structured data: WebSite + SearchAction (helps Google understand the site) -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -48,6 +53,7 @@
 }
 </script>
 
+<!-- Structured data: Organization -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -67,6 +73,7 @@
 
 <link rel="stylesheet" href="styles.css" />
 
+<!-- Backend config (loaded BEFORE the API module). Edit env.js with your Supabase keys. -->
 <script src="env.js"></script>
 </head>
 <body>
@@ -100,11 +107,15 @@
 
 <main>
 
+<!-- ============================================================
+     VOTE VIEW
+     ============================================================ -->
 <section id="view-vote" class="view">
   <div class="hero">
     <h1>Haramball: who's playing the<br><span class="accent">worst football</span> right now?</h1>
     <p class="hero-sub">Vote for the team serving haramball this week. Time-wasting, parking the bus, anti-football. You decide.</p>
 
+    <!-- HERO SEARCH — the primary action -->
     <div class="hero-search">
       <div class="hero-search-wrap">
         <svg class="hero-search-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -116,13 +127,16 @@
       </div>
       <div class="hero-search-hints" id="hero-search-hints">
         <span class="hero-hint-label">Try:</span>
-        </div>
+        <!-- Hint chips are inserted here by app.js (renderRandomHints) -->
+      </div>
     </div>
 
+    <!-- QUICK-VOTE CARDS — tap to vote instantly on the usual suspects -->
     <div class="quick-vote" id="quick-vote">
       <div class="quick-vote-label">Or convict a usual suspect:</div>
       <div class="quick-vote-grid" id="quick-vote-grid">
-        </div>
+        <!-- Cards inserted by app.js (renderQuickVote) -->
+      </div>
     </div>
 
     <div class="hero-stats" id="hero-stats" aria-live="polite">
@@ -138,6 +152,7 @@
       <span id="vote-status-text">Loading…</span>
     </div>
 
+    <!-- Top voted this week preview -->
     <div id="top-preview" class="top-preview hidden" aria-label="Most voted teams this week">
       <div class="top-preview-header">
         <span class="top-preview-label">🔥 Top voted this week</span>
@@ -146,6 +161,7 @@
       <div class="top-preview-list" id="top-preview-list"></div>
     </div>
 
+    <!-- Filters row (search moved to hero) -->
     <div class="filters-bar">
       <select class="league-filter" id="conf-filter" aria-label="Filter by confederation">
         <option value="all">All confederations</option>
@@ -167,6 +183,9 @@
   </div>
 </section>
 
+<!-- ============================================================
+     LEADERBOARD VIEW
+     ============================================================ -->
 <section id="view-leaderboard" class="view hidden">
   <div class="page">
     <h2 class="page-title">Haramball Leaderboards</h2>
@@ -185,6 +204,9 @@
   </div>
 </section>
 
+<!-- ============================================================
+     ABOUT VIEW
+     ============================================================ -->
 <section id="view-about" class="view hidden">
   <div class="page about">
     <h2 class="page-title">What is Haramball?</h2>
@@ -231,6 +253,9 @@
   <p class="footer-fine">Not affiliated with any club, league, or federation. For entertainment only.</p>
 </footer>
 
+<!-- ============================================================
+     VOTE MODAL
+     ============================================================ -->
 <div class="modal-backdrop hidden" id="vote-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vote-modal-title">
   <div class="modal">
     <button class="modal-close" id="modal-close" aria-label="Close">×</button>
@@ -256,6 +281,8 @@
 
 <script type="module" src="app.js"></script>
 
+<!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e73dff5b5ce54a71905c7f411a12dfab"}'></script>
+<!-- End Cloudflare Web Analytics -->
 </body>
 </html>
