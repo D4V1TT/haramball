@@ -444,6 +444,54 @@ function renderRandomHints() {
   container.innerHTML = label + chips;
 }
 
+// Render quick-vote cards from the LIVE overall leaderboard (all-time top teams).
+// Tapping a card opens the existing vote modal — same flow as searching for a team.
+//
+// NOTE (design decision): these cards show the current top-voted teams. This creates
+// a mild feedback loop — easy-to-tap leaders may accrue more votes simply for being
+// the default buttons, which can entrench the leaderboard order. Chosen deliberately
+// to keep the cards always-current and zero-maintenance. If the leaderboard ever feels
+// "stuck", consider excluding rank #1 or mixing in canonical teams.
+async function renderQuickVote() {
+  const grid = $('quick-vote-grid');
+  const wrap = $('quick-vote');
+  if (!grid || !wrap) return;
+
+  let rows;
+  try {
+    rows = await api.getLeaderboard({ period: 'all', limit: 5 });
+  } catch (e) {
+    // If the leaderboard fetch fails, hide the section rather than show an error.
+    wrap.style.display = 'none';
+    return;
+  }
+
+  // Need at least a few teams to make the row worthwhile.
+  if (!Array.isArray(rows) || rows.length < 3) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = '';
+  grid.innerHTML = rows.map(r => `
+    <button class="qv-card" type="button" data-team="${escapeHtml(r.team_id)}" aria-label="Vote against ${escapeHtml(r.team_name)}">
+      <span class="qv-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</span>
+      <span class="qv-info">
+        <span class="qv-name">${escapeHtml(r.team_name)}</span>
+        <span class="qv-action">Vote ⚖</span>
+      </span>
+    </button>
+  `).join('');
+
+  // Event delegation: tapping a card opens the vote modal for that team.
+  grid.querySelectorAll('.qv-card').forEach(card => {
+    card.addEventListener('click', () => {
+      track('quick_vote_clicked', { team_id: card.dataset.team });
+      openVoteModal(card.dataset.team);
+    });
+  });
+}
+
 // ---------- Bootstrap ----------
 async function init() {
   // Wire UI events first so the page is responsive even before data loads
@@ -577,6 +625,7 @@ async function init() {
   rebuildLeagueFilter();
   renderAboutCounts();
   renderRandomHints();  // Pick 3 random teams for the "Try:" chips
+  renderQuickVote();    // Live overall leaderboard as instant-vote cards (async, fire-and-forget)
   bindGridClickHandler();  // Attach grid click handler ONCE (event delegation)
   // Wire the "See full leaderboard" link in the top preview
   const tpLink = $('top-preview-link');
