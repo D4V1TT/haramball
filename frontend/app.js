@@ -34,209 +34,546 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// ---------- State management ----------
+// ---------- Analytics ----------
+function track(eventName, props = {}) {
+  try {
+    if (typeof window !== 'undefined' && window.cfBeacon && typeof window.cfBeacon.track === 'function') {
+      window.cfBeacon.track(eventName, props);
+    }
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('cf-analytics-event', {
+        detail: { name: eventName, props }
+      }));
+    }
+  } catch (e) {
+    // Never break the app for analytics failures
+  }
+  if (typeof console !== 'undefined') {
+    console.log('[analytics]', eventName, props);
+  }
+}
+
+// ---------- Application state ----------
 const state = {
-  teams: [],       // Raw lookup reference
-  leagues: [],     // League reference maps
-  reasons: [],     // Reason tags collection
-  leaderboard: [], // Current selected view array
-  quickTeams: [],  // Trending instant vote cards raw array
-  votedToday: null, // { voted: true/false, team_id: ... }
-  selectedPeriod: 'week',
+  teams: [],
+  leagues: [],
+  reasons: [],
+  votedToday: { voted: false },
+  selectedTeam: null,
+  selectedReason: null,
+  filterConf: 'all',
+  filterLeague: 'all',
   searchQuery: '',
-  selectedReasonTag: null,
-  activeModalTeamId: null
+  lbPeriod: 'week',
+  quickTeams: [] // Storing top weekly culprits dynamically here
 };
 
-// ---------- Render logic ----------
-function renderLeaderboard() {
+// ---------- View routing ----------
+function switchView(view) {
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  $$('.view').forEach(s => s.classList.add('hidden'));
+  const target = $(`view-${view}`);
+  if (target) target.classList.remove('hidden');
+  if (view === 'leaderboard') loadLeaderboard();
+  track('view_switched', { view });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+window.switchView = switchView; 
+
+// ---------- Stats / hero ----------
+async function loadGlobalStats() {
+  try {
+    const s = await api.getGlobalStats();
+    $('stat-votes').textContent = fmtNum(s.total_votes);
+    $('stat-week').textContent  = fmtNum(s.votes_this_week);
+    $('stat-teams').textContent = fmtNum(s.active_teams);
+    $('about-team-count').textContent = fmtNum(s.active_teams);
+  } catch (e) {
+    console.error('stats failed', e);
+  }
+}
+
+// ---------- Top voted this week preview ----------
+async function loadTopPreview() {
+  const wrap = $('top-preview');
+  const list = $('top-preview-list');
+  if (!wrap || !list) return;  
+  try {
+    const rows = await api.getLeaderboard({ period: 'week', limit: 3 });
+    if (!rows || rows.length === 0) {
+      wrap.classList.add('hidden');
+      return;
+    }
+    list.innerHTML = rows.map(r => {
+      const rank = Number(r.rank);
+      let rankCls = '';
+      if (rank === 1) rankCls = 'gold';
+      else if (rank === 2) rankCls = 'silver';
+      else if (rank === 3) rankCls = 'bronze';
+      const meta = [r.league_name, r.country_name].filter(Boolean).join(' · ');
+      return `<div class="tp-row" data-team="${escapeHtml(r.team_id)}">
+        <div class="tp-rank ${rankCls}">${rank}</div>
+        <div class="tp-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</div>
+        <div class="tp-info">
+          <div class="tp-name">${escapeHtml(r.team_name)}</div>
+          <div class="tp-meta">${escapeHtml(meta)}</div>
+        </div>
+        <div>
+          <div class="tp-votes">${fmtNum(r.vote_count)}</div>
+          <div class="tp-votes-lbl">votes</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const canVote = !state.votedToday.voted;
+    $$('.tp-row', list).forEach(row => {
+      if (!canVote) row.classList.add('disabled');
+      row.addEventListener('click', () => {
+        if (row.classList.contains('disabled')) return;
+        track('top_preview_clicked', { team_id: row.dataset.team });
+        openVoteModal(row.dataset.team);
+      });
+    });
+
+    wrap.classList.remove('hidden');
+  } catch (e) {
+    console.error('top preview failed', e);
+    wrap.classList.add('hidden');
+  }
+}
+
+// ---------- Voting status ----------
+async function refreshVotedToday() {
+  try {
+    state.votedToday = await api.hasVotedToday();
+  } catch (e) {
+    console.error('voted-today failed', e);
+    state.votedToday = { voted: false };
+  }
+  renderVoteStatus();
+}
+
+function renderVoteStatus() {
+  const el = $('vote-status');
+  const text = $('vote-status-text');
+  if (state.votedToday.voted) {
+    const team = state.teams.find(t => t.id === state.votedToday.team_id);
+    el.classList.add('voted');
+    text.textContent = team
+      ? `You voted ${team.name} today. Come back tomorrow.`
+      : `You've voted today. Come back tomorrow.`;
+  } else {
+    el.classList.remove('voted');
+    text.textContent = 'You can vote once per day. Pick your haramball team below.';
+  }
+}
+
+// ---------- Teams grid ----------
+function filteredTeams() {
+  const q = state.searchQuery.toLowerCase().trim();
+  return state.teams.filter(t => {
+    if (state.filterConf   !== 'all' && t.confederation !== state.filterConf) return false;
+    if (state.filterLeague !== 'all' && t.league        !== state.filterLeague) return false;
+    if (q) {
+      const hay = `${t.name} ${t.short_name || ''} ${t.league || ''} ${t.country || ''} ${t.city || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTeams() {
   const grid = $('teams-grid');
   const empty = $('teams-empty');
-  grid.innerHTML = '';
+  const meta = $('teams-meta');
+  const list = filteredTeams();
+  const canVote = !state.votedToday.voted;
+  const myLastTeam = state.votedToday.team_id || null;
 
-  const filtered = state.leaderboard.filter(item => {
-    const team = state.teams.find(t => t.id === item.team_id);
-    if (!team) return false;
-    if (!state.searchQuery) return true;
-    return team.name.toLowerCase().includes(state.searchQuery.toLowerCase());
-  });
+  meta.textContent = `${list.length} of ${state.teams.length} teams`;
 
-  if (filtered.length === 0) {
+  if (list.length === 0) {
+    grid.innerHTML = '';
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
 
-  grid.innerHTML = filtered.map((item, index) => {
-    const team = state.teams.find(t => t.id === item.team_id);
-    const league = state.leagues.find(l => l.id === team.league_id);
-    const rank = index + 1;
-    const isHigh = item.vote_count > 10;
-
-    return `
-      <div class="team-card" data-team-id="${team.id}">
-        <div class="team-info">
-          <div class="badge-placeholder">${getInitials(team.name)}</div>
-          <div>
-            <div class="team-name">${rank}. ${escapeHtml(team.name.toLowerCase())}</div>
-            <div class="team-league">${league ? escapeHtml(league.name.toLowerCase()) : ''}</div>
-          </div>
-        </div>
-        <div class="vote-badge ${isHigh ? 'high' : ''}">
-          ${fmtNum(item.vote_count)} verdicts
-        </div>
-      </div>
-    `;
+  const capped = list.slice(0, 240);
+  grid.innerHTML = capped.map(t => {
+    const isMyVote = !canVote && t.id === myLastTeam;
+    const cls = ['team-card'];
+    if (!canVote) cls.push('disabled');
+    if (isMyVote) cls.push('voted');
+    const meta = isMyVote
+      ? `${escapeHtml(t.league || '')} · Your vote`
+      : escapeHtml([t.league, t.country].filter(Boolean).join(' · '));
+    return `<button class="${cls.join(' ')}" data-team="${escapeHtml(t.id)}" role="listitem"${!canVote ? ' disabled' : ''}>
+      <span class="team-badge" style="background:${escapeHtml(t.color || '#444')}">${escapeHtml(getInitials(t.name))}</span>
+      <span class="team-info">
+        <span class="team-name">${escapeHtml(t.name)}</span>
+        <span class="team-meta">${meta}</span>
+      </span>
+    </button>`;
   }).join('');
-}
 
-function renderRandomHints() {
-  const container = $('hints-container');
-  if (!container || state.teams.length === 0) return;
-
-  const shuffled = [...state.teams].sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, 3);
-
-  container.innerHTML = selected.map(t => 
-    `<span class="hint-chip" data-name="${escapeHtml(t.name)}">${escapeHtml(t.name.toLowerCase())}</span>`
-  ).join(',');
-
-  $$('.hint-chip', container).forEach(chip => {
-    chip.addEventListener('click', () => {
-      const name = chip.getAttribute('data-name');
-      $('search').value = name;
-      state.searchQuery = name;
-      renderLeaderboard();
-    });
-  });
-}
-
-// Dynamically retrieve top teams for interactive instant voting cards
-function renderQuickVote() {
-  const container = $('quick-vote-container');
-  if (!container || !state.quickTeams || state.quickTeams.length === 0) {
-    if (container) container.parentElement.classList.add('hidden');
-    return;
+  if (capped.length < list.length) {
+    meta.textContent = `Showing 240 of ${list.length} matching teams (${state.teams.length} total). Refine your search.`;
   }
-  container.parentElement.classList.remove('hidden');
+}
 
-  container.innerHTML = state.quickTeams.map(item => {
-    const team = state.teams.find(t => t.id === item.team_id);
-    const displayName = team ? team.name.toLowerCase() : item.team_id;
-    return `
-      <button class="quick-vote-chip" data-team-id="${item.team_id}" type="button">
-        <span>${escapeHtml(displayName)}</span>
-        <span class="chip-count">(${item.vote_count})</span>
-      </button>
-    `;
-  }).join('');
-
-  $$('.quick-vote-chip', container).forEach(btn => {
-    btn.addEventListener('click', () => {
-      const teamId = btn.getAttribute('data-team-id');
-      openVoteModal(teamId);
-    });
+function bindGridClickHandler() {
+  const grid = $('teams-grid');
+  grid.addEventListener('click', (e) => {
+    const card = e.target.closest('.team-card');
+    if (!card) return;
+    if (card.classList.contains('disabled')) return;
+    openVoteModal(card.dataset.team);
   });
 }
 
-// ---------- Modal handlers ----------
+// ---------- League filter ----------
+function rebuildLeagueFilter() {
+  const sel = $('league-filter');
+  const current = sel.value;
+  const conf = state.filterConf;
+  const leagues = (conf === 'all' ? state.leagues : state.leagues.filter(l => l.confederation === conf))
+    .slice()
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  sel.innerHTML = `<option value="all">All leagues</option>` + leagues.map(l =>
+    `<option value="${escapeHtml(l.name)}">${escapeHtml(l.name)} — ${escapeHtml(l.country)}</option>`
+  ).join('');
+  sel.value = leagues.some(l => l.name === current) ? current : 'all';
+  state.filterLeague = sel.value;
+}
+
+// ---------- Vote modal ----------
 function openVoteModal(teamId) {
-  if (state.votedToday && state.votedToday.voted) {
-    showToast(`court closed. you already issued a verdict today.`);
-    return;
-  }
-
   const team = state.teams.find(t => t.id === teamId);
   if (!team) return;
+  state.selectedTeam = team;
+  state.selectedReason = null;
 
-  state.activeModalTeamId = teamId;
-  state.selectedReasonTag = null;
+  track('vote_modal_opened', {
+    team_id: team.id,
+    league: team.league,
+    confederation: team.confederation
+  });
 
   $('modal-badge').textContent = getInitials(team.name);
-  $('modal-team-name').textContent = team.name.toLowerCase();
-  
-  const league = state.leagues.find(l => l.id === team.league_id);
-  $('modal-team-meta').textContent = league ? league.name.toLowerCase() : '';
+  $('modal-badge').style.background = team.color || '#444';
+  $('modal-team-name').textContent = team.name;
+  $('modal-team-meta').textContent = [team.league, team.country].filter(Boolean).join(' · ');
 
-  const reasonsGrid = $('reasons-grid');
-  reasonsGrid.innerHTML = state.reasons.map(r => `
-    <button class="reason-btn" data-tag="${r.tag}" type="button">
-      ${escapeHtml(r.label.toLowerCase())}
-    </button>
-  `).join('');
-
-  $$('.reason-btn', reasonsGrid).forEach(btn => {
-    btn.addEventListener('click', () => {
-      $$('.reason-btn', reasonsGrid).forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      state.selectedReasonTag = btn.getAttribute('data-tag');
+  const grid = $('reasons-grid');
+  grid.innerHTML = state.reasons.map(r =>
+    `<button class="reason-btn" data-reason="${escapeHtml(r.code)}" type="button" role="radio" aria-checked="false">${escapeHtml(r.label)}</button>`
+  ).join('');
+  $$('.reason-btn', grid).forEach(b => {
+    b.addEventListener('click', () => {
+      const wasSelected = b.classList.contains('selected');
+      $$('.reason-btn', grid).forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-checked', 'false'); });
+      if (wasSelected) {
+        state.selectedReason = null;
+      } else {
+        b.classList.add('selected');
+        b.setAttribute('aria-checked', 'true');
+        state.selectedReason = b.dataset.reason;
+      }
     });
   });
 
   $('comment').value = '';
   $('char-count').textContent = '0';
+  $('vote-submit').disabled = false;
   $('modal-error').classList.add('hidden');
-  $('vote-modal').classList.remove('hidden');
+
+  const m = $('vote-modal');
+  m.classList.remove('hidden');
+  m.setAttribute('aria-hidden', 'false');
+  setTimeout(() => $('comment').focus({ preventScroll: true }), 50);
 }
 
 function closeVoteModal() {
-  $('vote-modal').classList.add('hidden');
-  state.activeModalTeamId = null;
-  state.selectedReasonTag = null;
+  const m = $('vote-modal');
+  m.classList.add('hidden');
+  m.setAttribute('aria-hidden', 'true');
+  state.selectedTeam = null;
+  state.selectedReason = null;
 }
 
 async function submitVote() {
-  const errDiv = $('modal-error');
-  errDiv.classList.add('hidden');
-
-  if (!state.activeModalTeamId) return;
-
+  if (!state.selectedTeam) return;
+  const btn = $('vote-submit');
+  const errEl = $('modal-error');
+  errEl.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Casting…';
+  const hasComment = ($('comment').value || '').trim().length > 0;
   try {
     await api.castVote({
-      team_id: state.activeModalTeamId,
-      reason_tag: state.selectedReasonTag,
-      comment: $('comment').value
+      team_id:    state.selectedTeam.id,
+      reason_tag: state.selectedReason,  
+      comment:    $('comment').value,
     });
-
-    state.votedToday = { voted: true, team_id: state.activeModalTeamId };
-    showToast('verdict officially filed to the archive.');
+    track('vote_cast', {
+      team_id: state.selectedTeam.id,
+      league: state.selectedTeam.league,
+      confederation: state.selectedTeam.confederation,
+      reason: state.selectedReason || 'none',
+      has_comment: hasComment
+    });
     closeVoteModal();
-    
-    // Refresh lists
-    const ld = await api.getLeaderboard({ period: state.selectedPeriod });
-    state.leaderboard = ld;
-    renderLeaderboard();
+    showToast(`Vote registered for ${state.selectedTeam.name}`);
+    await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview(), refreshQuickVoteData()]);
+    renderTeams();
   } catch (e) {
-    errDiv.textContent = (e.message || 'failed to register verdict').toLowerCase();
-    errDiv.classList.remove('hidden');
+    let msg = e.message || 'Could not cast vote.';
+    let errorType = 'unknown';
+    if (e.code === 'P0001' || /already voted/i.test(msg)) {
+      msg = 'You\'ve already voted today. Come back tomorrow.';
+      errorType = 'already_voted';
+    } else if (/network/i.test(msg) || /fetch/i.test(msg)) {
+      errorType = 'network';
+    }
+    track('vote_failed', { error_type: errorType, team_id: state.selectedTeam.id });
+    errEl.textContent = msg;
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Cast vote';
   }
 }
 
-// ---------- Init & Event Listeners ----------
-document.addEventListener('DOMContentLoaded', async () => {
-  // Bind tab toggles
-  $$('.tab').forEach(tab => {
-    tab.addEventListener('click', async () => {
-      $$('.tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      state.selectedPeriod = tab.getAttribute('data-period');
-      
-      try {
-        state.leaderboard = await api.getLeaderboard({ period: state.selectedPeriod });
-        renderLeaderboard();
-      } catch (e) {
-        console.error(e);
-      }
+// ---------- Leaderboard ----------
+async function loadLeaderboard() {
+  const list = $('lb-list');
+  const loading = $('lb-loading');
+  const empty = $('lb-empty');
+
+  list.innerHTML = '';
+  empty.classList.add('hidden');
+  loading.classList.remove('hidden');
+
+  try {
+    const rows = await api.getLeaderboard({ period: state.lbPeriod, limit: 50 });
+    loading.classList.add('hidden');
+
+    if (!rows || rows.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    list.innerHTML = rows.map(r => {
+      const rank = Number(r.rank);
+      let rankCls = '';
+      if (rank === 1) rankCls = 'gold';
+      else if (rank === 2) rankCls = 'silver';
+      else if (rank === 3) rankCls = 'bronze';
+      const meta = [r.league_name, r.country_name].filter(Boolean).join(' · ');
+      const reason = r.top_reason_label
+        ? `<div class="lb-reason">${escapeHtml(r.top_reason_label)}</div>`
+        : '';
+      return `<div class="lb-row">
+        <div class="lb-rank ${rankCls}">${rank}</div>
+        <div class="lb-team-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</div>
+        <div class="lb-team-info">
+          <div class="lb-team-name">${escapeHtml(r.team_name)}</div>
+          <div class="lb-team-meta">${escapeHtml(meta)}</div>
+          ${reason}
+        </div>
+        <div class="lb-vote-block">
+          <div class="lb-votes">${fmtNum(r.vote_count)}</div>
+          <div class="lb-votes-lbl">votes</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    loading.classList.add('hidden');
+    list.innerHTML = `<div class="lb-empty">Could not load leaderboard. ${escapeHtml(e.message || '')}</div>`;
+    console.error('leaderboard failed', e);
+  }
+}
+
+// ---------- About counts ----------
+function renderAboutCounts() {
+  $('about-team-count').textContent   = fmtNum(state.teams.length);
+  $('about-league-count').textContent = fmtNum(state.leagues.length);
+}
+
+// ---------- Random Search Hints ----------
+function renderRandomHints() {
+  const container = $('hero-search-hints');
+  if (!container || !state.teams || state.teams.length === 0) return;
+
+  const pool = state.teams.filter(t => t.name && t.name.length >= 4);
+  if (pool.length < 3) return;
+  const picks = [];
+  const usedIds = new Set();
+  let safety = 0;
+  while (picks.length < 3 && safety < 50) {
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    if (!usedIds.has(t.id)) {
+      usedIds.add(t.id);
+      picks.push(t);
+    }
+    safety++;
+  }
+
+  const label = '<span class="hero-hint-label">Try:</span>';
+  const chips = picks.map(t =>
+    `<button class="hero-hint" type="button" data-hint="${escapeHtml(t.name)}">${escapeHtml(t.name)}</button>`
+  ).join('');
+  container.innerHTML = label + chips;
+}
+
+// ---------- Dynamic Quick Vote Cards ----------
+// Safely pulls live data points directly using your styles (.qv-card, .qv-badge, .qv-info, etc.)
+function renderQuickVote() {
+  const grid = $('quick-vote-grid');
+  const wrap = $('quick-vote');
+  if (!grid || !wrap) return;
+
+  if (!state.quickTeams || state.quickTeams.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  // Cross-reference leaderboard IDs with master team object details
+  const picks = [];
+  state.quickTeams.forEach(item => {
+    const team = state.teams.find(t => t.id === item.team_id);
+    if (team) picks.push(team);
+  });
+
+  if (picks.length < 3) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  grid.innerHTML = picks.map(t => `
+    <button class="qv-card" type="button" data-team="${escapeHtml(t.id)}" aria-label="Vote against ${escapeHtml(t.name)}">
+      <span class="qv-badge" style="background:${escapeHtml(t.color || '#444')}">${escapeHtml(getInitials(t.name))}</span>
+      <span class="qv-info">
+        <span class="qv-name">${escapeHtml(t.name)}</span>
+        <span class="qv-action">Vote ⚖</span>
+      </span>
+    </button>
+  `).join('');
+
+  grid.querySelectorAll('.qv-card').forEach(card => {
+    const canVote = !state.votedToday.voted;
+    if (!canVote) card.classList.add('disabled');
+    
+    card.addEventListener('click', () => {
+      if (card.classList.contains('disabled')) return;
+      track('quick_vote_clicked', { team_id: card.dataset.team });
+      openVoteModal(card.dataset.team);
     });
   });
+}
 
-  // Bind lookup inputs
-  $('search').addEventListener('input', (e) => {
-    state.searchQuery = e.target.value;
-    renderLeaderboard();
+// Refresh quick vote reference block in isolation when structural changes pass
+async function refreshQuickVoteData() {
+  try {
+    state.quickTeams = await api.getLeaderboard({ period: 'week', limit: 4 });
+    renderQuickVote();
+  } catch (e) {
+    console.error('failed loading dynamic quick vote references', e);
+  }
+}
+
+// ---------- Bootstrap ----------
+async function init() {
+  $$('.nav-btn').forEach(b => {
+    if (b.tagName === 'BUTTON') {
+      b.addEventListener('click', () => switchView(b.dataset.view));
+    }
+  });
+  $$('.lb-tab').forEach(t => t.addEventListener('click', () => {
+    $$('.lb-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    state.lbPeriod = t.dataset.period;
+    loadLeaderboard();
+  }));
+
+  let searchTimer = null;
+  const searchInput = $('search');
+  const searchClear = $('search-clear');  
+  const searchIcon = document.querySelector('.hero-search-icon, .search-icon');
+
+  function scrollToTeams() {
+    const grid = $('teams-grid');
+    if (!grid) return;
+    const offset = grid.getBoundingClientRect().top + window.pageYOffset - 80;
+    window.scrollTo({ top: offset, behavior: 'smooth' });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      const val = e.target.value;
+      if (searchClear) searchClear.classList.toggle('hidden', !val);
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.searchQuery = val;
+        renderTeams();
+      }, 120);
+    });
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchTimer) clearTimeout(searchTimer);
+        state.searchQuery = searchInput.value;
+        renderTeams();
+        searchInput.blur();  
+        scrollToTeams();
+      }
+    });
+  }
+  if (searchIcon) {
+    searchIcon.style.pointerEvents = 'auto';
+    searchIcon.style.cursor = 'pointer';
+    searchIcon.addEventListener('click', () => {
+      if (!searchInput) return;
+      if (searchTimer) clearTimeout(searchTimer);
+      state.searchQuery = searchInput.value;
+      renderTeams();
+      searchInput.blur();
+      scrollToTeams();
+    });
+  }
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      state.searchQuery = '';
+      searchClear.classList.add('hidden');
+      searchInput.focus();
+      renderTeams();
+    });
+  }
+  const hintsContainer = $('hero-search-hints');
+  if (hintsContainer) {
+    hintsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.hero-hint');
+      if (!btn) return;
+      const val = btn.dataset.hint;
+      $('search').value = val;
+      state.searchQuery = val;
+      const sc = $('search-clear');
+      if (sc) sc.classList.remove('hidden');
+      $('search').focus();
+      renderTeams();
+      scrollToTeams();
+    });
+  }
+  $('conf-filter').addEventListener('change', e => {
+    state.filterConf = e.target.value;
+    rebuildLeagueFilter();
+    renderTeams();
+  });
+  $('league-filter').addEventListener('change', e => {
+    state.filterLeague = e.target.value;
+    renderTeams();
   });
 
-  // Modal lifecycle hooks
   $('modal-close').addEventListener('click', closeVoteModal);
   $('vote-modal').addEventListener('click', e => {
     if (e.target.id === 'vote-modal') closeVoteModal();
@@ -249,41 +586,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('vote-submit').addEventListener('click', submitVote);
 
-  // Load backend context records in parallel
   try {
-    const [teams, leagues, reasons, votedToday, weeklyLeaderboard] = await Promise.all([
+    const [teams, leagues, reasons, weeklyLeaderboard] = await Promise.all([
       api.getTeams(), 
       api.getLeagues(), 
       api.getReasonTags(),
-      api.hasVotedToday(),
-      api.getLeaderboard({ period: 'week', limit: 3 }) // Fetch current top 3 culprits
+      api.getLeaderboard({ period: 'week', limit: 4 }) // Safely pull weekly top items
     ]);
-
     state.teams = teams;
     state.leagues = leagues;
     state.reasons = reasons;
-    state.votedToday = votedToday;
     state.quickTeams = weeklyLeaderboard;
-
-    // Load active layout list
-    state.leaderboard = await api.getLeaderboard({ period: state.selectedPeriod });
   } catch (e) {
-    console.error('failed to load operational dataset maps', e);
-    $('teams-empty').textContent = 'could not pull data ledger rows. verify active supabase routing parameters.';
+    console.error('failed to load reference data', e);
+    $('teams-empty').textContent = 'Could not load teams. Check your connection or Supabase config (env.js).';
     $('teams-empty').classList.remove('hidden');
     return;
   }
 
-  // Bind click handlers to primary elements via row delegates
-  $('teams-grid').addEventListener('click', e => {
-    const card = e.target.closest('.team-card');
-    if (card) {
-      const teamId = card.getAttribute('data-team-id');
-      openVoteModal(teamId);
-    }
-  });
+  rebuildLeagueFilter();
+  renderAboutCounts();
+  renderRandomHints();  
+  renderQuickVote();    
+  bindGridClickHandler();  
+  
+  const tpLink = $('top-preview-link');
+  if (tpLink) tpLink.addEventListener('click', () => switchView('leaderboard'));
+  await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
+  renderTeams();
+}
 
-  renderRandomHints();
-  renderQuickVote();
-  renderLeaderboard();
-});
+init();

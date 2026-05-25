@@ -4,319 +4,234 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<title>haramball — vote on the worst football of the week</title>
-<meta name="description" content="vote for the worst football of the week. live haramball leaderboards across 960+ clubs in 82 leagues worldwide. anti-football. time-wasting. you decide." />
+<title>Haramball — Vote on the Worst Football of the Week</title>
+<meta name="description" content="Vote for the worst football of the week. Live haramball leaderboards across 960+ clubs in 82 leagues worldwide. Anti-football. Time-wasting. You decide." />
 <meta name="keywords" content="haramball, worst football team, anti-football, parking the bus, time wasting football, defensive football, boring football vote, haramball leaderboard, haramball team of the week" />
 <link rel="canonical" href="https://haramball.com/" />
 <meta name="theme-color" content="#0a0a0a" />
 <meta name="robots" content="index, follow, max-image-preview:large" />
 <meta name="author" content="haramball.com" />
 
-<meta property=\"og:site_name\" content=\"Haramball\" />
-<meta property="og:title" content="haramball — vote the worst football of the week" />
-<meta property="og:description" content="who's playing the worst football right now? vote across 82 leagues and 960+ clubs. live weekly, monthly, and all-time haramball leaderboards." />
+<meta property="og:site_name" content="Haramball" />
+<meta property="og:title" content="Haramball — Vote the Worst Football of the Week" />
+<meta property="og:description" content="Who's playing the worst football right now? Vote across 82 leagues and 960+ clubs. Live weekly, monthly, and all-time haramball leaderboards." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://haramball.com/" />
-<meta property="og:image" content="https://haramball.com/logo-512x512.png" />
+<meta property="og:image" content="https://haramball.com/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Haramball — vote the worst football of the week" />
+<meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="haramball — vote the worst football of the week" />
-<meta name="twitter:description" content="who's playing the worst football right now? vote across 82 leagues and 960+ clubs. live weekly, monthly, and all-time leaderboards." />
-<meta name="twitter:image" content="https://haramball.com/logo-512x512.png" />
+<meta name="twitter:site" content="@haramball11" />
+<meta name="twitter:creator" content="@haramball11" />
+<meta name="twitter:title" content="Haramball — Vote the Worst Football of the Week" />
+<meta name="twitter:description" content="Who's playing the worst football right now? You decide. 960+ clubs, 82 leagues, live leaderboards." />
+<meta name="twitter:image" content="https://haramball.com/og-image.png" />
+<meta name="twitter:image:alt" content="Haramball — vote the worst football of the week" />
 
-<link rel="icon" href="/favicon.ico" sizes="any" />
-<link rel="icon" href="/logo.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="/logo-180x180.png" />
+<link rel="icon" type="image/svg+xml" href="logo.svg" />
+<link rel="alternate icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="logo-180x180.png" />
+<link rel="manifest" href="manifest.json" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Courier+Prime&display=swap" rel="stylesheet" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Haramball",
+  "alternateName": "Haramball.com",
+  "url": "https://haramball.com/",
+  "description": "Vote for the team playing the worst football of the week. Live leaderboards across 82 leagues worldwide.",
+  "inLanguage": "en"
+}
+</script>
 
-<style>
-  :root {
-    --bg: #0a0a0a;
-    --card: #121212;
-    --border: #222222;
-    --text: #eaeaea;
-    --sub: #888888;
-    --red: #dc2626;
-    --red-hover: #b91c1c;
-    --red-glow: rgba(220, 38, 38, 0.15);
-  }
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Haramball",
+  "url": "https://haramball.com/",
+  "logo": "https://haramball.com/logo-512x512.png",
+  "description": "A football fan voting platform that ranks the worst football of the week, month, and year.",
+  "sameAs": [
+    "https://www.tiktok.com/@haramball.com",
+    "https://www.instagram.com/haramball11/",
+    "https://x.com/haramball11",
+    "https://www.youtube.com/channel/UCnhH-qAcvuU97o4dQVmhz3A"
+  ]
+}
+</script>
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: 'Space Grotesk', sans-serif;
-    padding-bottom: 60px;
-    overflow-x: hidden;
-  }
-  
-  a { color: inherit; text-decoration: none; }
-  button { font-family: inherit; }
+<link rel="stylesheet" href="styles.css" />
 
-  header {
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
-  .brand img { width: 28px; height: 28px; }
-
-  .hero {
-    max-width: 640px;
-    margin: 60px auto 40px auto;
-    text-align: center;
-    padding: 0 20px;
-  }
-  .court-badge {
-    font-family: 'Courier Prime', monospace;
-    font-size: 0.75rem;
-    color: var(--red);
-    text-transform: lowercase;
-    border: 1px solid var(--red);
-    padding: 3px 8px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-bottom: 16px;
-    background: var(--red-glow);
-  }
-  h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 12px; line-height: 1.1; }
-  .subtitle { color: var(--sub); font-size: 1.05rem; margin-bottom: 32px; line-height: 1.5; }
-
-  .search-wrapper { position: relative; max-width: 480px; margin: 0 auto; }
-  .search-input {
-    width: 100%;
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 14px 18px;
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 1rem;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-  .search-input:focus { border-color: var(--red); box-shadow: 0 0 12px var(--red-glow); }
-  
-  .hints-row {
-    margin-top: 12px;
-    font-size: 0.8rem;
-    color: var(--sub);
-    font-family: 'Courier Prime', monospace;
-  }
-  .hint-chip { color: var(--text); cursor: pointer; text-decoration: underline; margin-left: 4px; }
-  .hint-chip:hover { color: var(--red); }
-
-  /* Trending Instant Vote Layout styles */
-  .quick-vote-wrapper {
-    margin-top: 24px;
-    text-align: center;
-  }
-  .quick-vote-label {
-    font-size: 0.75rem;
-    font-family: 'Courier Prime', monospace;
-    color: var(--sub);
-    display: block;
-    margin-bottom: 10px;
-  }
-  #quick-vote-container {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  .quick-vote-chip {
-    background: var(--card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-  }
-  .quick-vote-chip:hover {
-    border-color: var(--red);
-    background: #161616;
-  }
-  .chip-count {
-    color: var(--red);
-    font-weight: bold;
-    font-size: 0.75rem;
-  }
-
-  main { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
-  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; gap: 8px; }
-  .tab {
-    padding: 10px 16px;
-    color: var(--sub);
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-  }
-  .tab.active { color: var(--text); border-bottom-color: var(--red); font-weight: 700; }
-
-  .grid-container { position: relative; min-height: 200px; }
-  .teams-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 15fr));
-    gap: 16px;
-  }
-  .team-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    transition: transform 0.15s ease, border-color 0.15s ease;
-  }
-  .team-card:hover { transform: translateY(-2px); border-color: #333; }
-  .team-info { display: flex; align-items: center; gap: 12px; }
-  .badge-placeholder {
-    width: 36px;
-    height: 36px;
-    background: #1f1f1f;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--sub);
-  }
-  .team-name { font-weight: 500; font-size: 0.95rem; margin-bottom: 2px; }
-  .team-league { color: var(--sub); font-size: 0.75rem; font-family: 'Courier Prime', monospace; }
-  .vote-badge {
-    background: #1a1a1a;
-    border: 1px solid var(--border);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-  .vote-badge.high { color: var(--red); border-color: rgba(220, 38, 38, 0.3); background: var(--red-glow); }
-
-  .empty-state { text-align: center; color: var(--sub); padding: 40px 0; font-size: 0.9rem; }
-  .hidden { display: none !important; }
-
-  /* Modals */
-  .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center; z-index: 100;
-    padding: 20px;
-  }
-  .modal {
-    background: var(--card); border: 1px solid var(--border);
-    width: 100%; max-width: 440px; border-radius: 12px; padding: 24px;
-    position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  }
-  .modal-close {
-    position: absolute; top: 16px; right: 16px; background: none; border: none;
-    color: var(--sub); font-size: 1.5rem; cursor: pointer;
-  }
-  .modal-close:hover { color: var(--text); }
-  .modal-team { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-  .modal-badge { width: 44px; height: 44px; background: #1f1f1f; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
-  .modal-team-name { font-size: 1.1rem; font-weight: 700; }
-  .modal-team-meta { font-size: 0.75rem; color: var(--sub); font-family: 'Courier Prime', monospace; margin-top: 2px; }
-  
-  h3 { font-size: 1.15rem; margin-bottom: 4px; }
-  .modal-sub { color: var(--sub); font-size: 0.8rem; margin-bottom: 16px; }
-  
-  .reasons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-  .reason-btn {
-    background: var(--bg); border: 1px solid var(--border); padding: 10px;
-    border-radius: 6px; text-align: left; font-size: 0.8rem; color: var(--text);
-    cursor: pointer; transition: all 0.15s ease;
-  }
-  .reason-btn:hover { border-color: #444; }
-  .reason-btn.selected { border-color: var(--red); background: var(--red-glow); color: #fff; }
-
-  .comment-label { display: block; font-size: 0.8rem; color: var(--sub); margin-bottom: 6px; }
-  .comment-label .optional { opacity: 0.5; }
-  .comment-input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    padding: 10px 12px; border-radius: 6px; color: var(--text); font-size: 0.85rem;
-    outline: none; margin-bottom: 4px;
-  }
-  .comment-input:focus { border-color: #444; }
-  .char-count { text-align: right; font-size: 0.7rem; color: var(--sub); font-family: 'Courier Prime', monospace; margin-bottom: 20px; }
-
-  .vote-btn {
-    width: 100%; background: var(--red); color: white; border: none;
-    padding: 12px; border-radius: 6px; font-weight: 700; font-size: 0.95rem;
-    cursor: pointer; transition: background 0.15s ease;
-  }
-  .vote-btn:hover { background: var(--red-hover); }
-  .modal-error { color: var(--red); font-size: 0.75rem; margin-top: 10px; text-align: center; font-family: 'Courier Prime', monospace; }
-
-  /* Toast notification */
-  .toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
-    background: #ffffff; color: #0a0a0a; padding: 12px 24px; border-radius: 30px;
-    font-size: 0.85rem; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    z-index: 200; pointer-events: none; white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-</style>
+<script src="env.js"></script>
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <img src="/logo.svg" alt="court emblem" />
-    <span>haramball court</span>
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo" onclick="event.preventDefault(); switchView('vote')">
+      <svg class="logo-mark" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="96" fill="#d63031"/>
+        <rect x="48" y="38" width="22" height="124" fill="#ffffff" rx="2"/>
+        <rect x="130" y="38" width="22" height="124" fill="#ffffff" rx="2"/>
+        <circle cx="100" cy="100" r="28" fill="#ffffff"/>
+        <circle cx="100" cy="100" r="28" fill="none" stroke="#0a0a0a" stroke-width="2.5"/>
+        <polygon points="100,90.5 109.04,97.07 105.58,107.71 94.42,107.71 90.96,97.07" fill="#0a0a0a"/>
+        <line x1="100" y1="90.5" x2="100" y2="74" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="109.04" y1="97.07" x2="124.7" y2="91.85" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="105.58" y1="107.71" x2="115.27" y2="121.18" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="94.42" y1="107.71" x2="84.73" y2="121.18" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="90.96" y1="97.07" x2="75.30" y2="91.85" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text">haram<span>ball</span></span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <button class="nav-btn active" data-view="vote">Vote</button>
+      <button class="nav-btn" data-view="leaderboard">Leaderboards</button>
+      <button class="nav-btn" data-view="about">About</button>
+      <a class="nav-btn nav-link" href="/what-is-haramball.html">What is Haramball</a>
+    </nav>
   </div>
 </header>
 
-<div class="hero">
-  <div class="court-badge">lower court session active</div>
-  <h1>who played the worst football this week?</h1>
-  <p class="subtitle">the community directory tracking defensive tactics, lowblocks, and pure unadulterated anti-football across 82 leagues globally.</p>
-  
-  <div class="search-wrapper">
-    <input type="text" id="search" class="search-input" placeholder="search any club to issue a verdict..." autocomplete="off" />
-  </div>
-  
-  <div class="hints-row" id="hints-row">
-    try:<span id="hints-container"></span>
-  </div>
-
-  <div class="quick-vote-wrapper">
-    <span class="quick-vote-label">trending masterclasses:</span>
-    <div id="quick-vote-container"></div>
-  </div>
-</div>
-
 <main>
-  <div class="tabs" role="tablist">
-    <div class="tab active" data-period="week" role="tab" aria-selected="true">weekly session</div>
-    <div class="tab" data-period="month" role="tab" aria-selected="false">monthly log</div>
-    <div class="tab" data-period="all" role="tab" aria-selected="false">historical ledger</div>
+
+<section id="view-vote" class="view">
+  <div class="hero">
+    <h1>Haramball: who's playing the<br><span class="accent">worst football</span> right now?</h1>
+    <p class="hero-sub">Vote for the team serving haramball this week. Time-wasting, parking the bus, anti-football. You decide.</p>
+
+    <div class="hero-search">
+      <div class="hero-search-wrap">
+        <svg class="hero-search-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" class="hero-search-input" id="search" placeholder="Search any team to vote against…" aria-label="Search teams to vote against" autocomplete="off" />
+        <button class="hero-search-clear hidden" id="search-clear" type="button" aria-label="Clear search">×</button>
+      </div>
+      <div class="hero-search-hints" id="hero-search-hints">
+        <span class="hero-hint-label">Try:</span>
+      </div>
+    </div>
+
+    <div class="quick-vote" id="quick-vote">
+      <div class="quick-vote-label">Or convict a usual suspect:</div>
+      <div class="quick-vote-grid" id="quick-vote-grid">
+        </div>
+    </div>
+
+    <div class="hero-stats" id="hero-stats" aria-live="polite">
+      <div class="hero-stat"><div class="num" id="stat-votes">—</div><div class="lbl">Total votes</div></div>
+      <div class="hero-stat"><div class="num" id="stat-week">—</div><div class="lbl">This week</div></div>
+      <div class="hero-stat"><div class="num" id="stat-teams">—</div><div class="lbl">Teams listed</div></div>
+    </div>
   </div>
 
-  <div class="grid-container">
-    <div id="teams-grid" class="teams-grid"></div>
-    <div id="teams-empty" class="empty-state hidden">no items match your parameters.</div>
+  <div class="page">
+    <div id="vote-status" class="vote-status" role="status" aria-live="polite">
+      <span class="dot"></span>
+      <span id="vote-status-text">Loading…</span>
+    </div>
+
+    <div id="top-preview" class="top-preview hidden" aria-label="Most voted teams this week">
+      <div class="top-preview-header">
+        <span class="top-preview-label">🔥 Top voted this week</span>
+        <button class="top-preview-link" type="button" id="top-preview-link">See full leaderboard →</button>
+      </div>
+      <div class="top-preview-list" id="top-preview-list"></div>
+    </div>
+
+    <div class="filters-bar">
+      <select class="league-filter" id="conf-filter" aria-label="Filter by confederation">
+        <option value="all">All confederations</option>
+        <option value="UEFA">UEFA (Europe)</option>
+        <option value="CONMEBOL">CONMEBOL (South America)</option>
+        <option value="CONCACAF">CONCACAF (N. America)</option>
+        <option value="AFC">AFC (Asia)</option>
+        <option value="CAF">CAF (Africa)</option>
+        <option value="OFC">OFC (Oceania)</option>
+      </select>
+      <select class="league-filter" id="league-filter" aria-label="Filter by league">
+        <option value="all">All leagues</option>
+      </select>
+    </div>
+
+    <div class="teams-meta" id="teams-meta" aria-live="polite"></div>
+    <div class="teams-grid" id="teams-grid" role="list"></div>
+    <div class="teams-empty hidden" id="teams-empty">No teams match your search.</div>
   </div>
+</section>
+
+<section id="view-leaderboard" class="view hidden">
+  <div class="page">
+    <h2 class="page-title">Haramball Leaderboards</h2>
+    <p class="page-sub">The teams the people have spoken on. Updated live.</p>
+
+    <div class="lb-tabs" role="tablist">
+      <button class="lb-tab active" role="tab" data-period="week">This week</button>
+      <button class="lb-tab" role="tab" data-period="month">This month</button>
+      <button class="lb-tab" role="tab" data-period="year">This year</button>
+      <button class="lb-tab" role="tab" data-period="all">All time</button>
+    </div>
+
+    <div class="lb-list" id="lb-list" aria-live="polite"></div>
+    <div class="lb-loading hidden" id="lb-loading">Loading leaderboard…</div>
+    <div class="lb-empty hidden" id="lb-empty">No votes yet for this period. Be the first.</div>
+  </div>
+</section>
+
+<section id="view-about" class="view hidden">
+  <div class="page about">
+    <h2 class="page-title">What is Haramball?</h2>
+    <p class="page-sub">A simple idea, a serious mission.</p>
+
+    <div class="about-card">
+      <p><strong>Haramball</strong> is a term football fans use for the worst kind of football — cynical, time-wasting, defensive, soulless. The football that makes you check your phone instead of the pitch.</p>
+      <p>This site lets you vote for the team you think is the biggest haramball offender right now. <strong>One vote per day.</strong> Pick a reason — time-wasting, parking the bus, diving — and optionally add a short comment. Your votes feed the weekly, monthly, yearly, and all-time leaderboards.</p>
+      <p>No registration, no accounts, no paywalls.</p>
+      <p>New to the term? Read our full guide: <a href="/what-is-haramball.html">What is Haramball?</a></p>
+      <p>Tag <a href="https://x.com/haramball11" target="_blank" rel="noopener">@haramball11</a> on socials when your team gets robbed by haramball football. We feature the worst clips of the week.</p>
+    </div>
+
+    <div class="about-card">
+      <strong class="about-strong">How voting works</strong>
+      One vote per device per day. Votes are timestamped (UTC) so the weekly leaderboard rolls over Monday, monthly on the 1st, yearly on January 1.
+    </div>
+
+    <div class="about-card">
+      <strong class="about-strong">Coverage</strong>
+      Currently <span id="about-team-count">—</span> top-flight clubs across <span id="about-league-count">—</span> leagues worldwide, spanning all six confederations (UEFA, CONMEBOL, CONCACAF, AFC, CAF, OFC). Missing your team? Send us a message.
+    </div>
+  </div>
+</section>
+
 </main>
 
-<div class="modal-overlay hidden" id="vote-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vote-modal-title">
+<footer class="footer">
+  <div class="footer-socials" aria-label="Follow Haramball on social media">
+    <a href="https://www.tiktok.com/@haramball.com" target="_blank" rel="noopener" aria-label="TikTok">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z"/></svg>
+    </a>
+    <a href="https://www.instagram.com/haramball11/" target="_blank" rel="noopener" aria-label="Instagram">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+    </a>
+    <a href="https://x.com/haramball11" target="_blank" rel="noopener" aria-label="X (Twitter)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    </a>
+    <a href="https://www.youtube.com/channel/UCnhH-qAcvuU97o4dQVmhz3A" target="_blank" rel="noopener" aria-label="YouTube">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+    </a>
+  </div>
+  <p>haramball.com · Vote the worst football of the week</p>
+  <p class="footer-fine">Not affiliated with any club, league, or federation. For entertainment only.</p>
+</footer>
+
+<div class="modal-backdrop hidden" id="vote-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vote-modal-title">
   <div class="modal">
     <button class="modal-close" id="modal-close" aria-label="Close">×</button>
     <div class="modal-team">
@@ -326,19 +241,21 @@
         <div class="modal-team-meta" id="modal-team-meta"></div>
       </div>
     </div>
-    <h3 id="vote-modal-title">issue a haramball indictment</h3>
-    <p class="modal-sub">select the tactical crime category committed by this club.</p>
+    <h3 id="vote-modal-title">Vote this team for haramball</h3>
+    <p class="modal-sub">Why? Pick a reason if you want — or skip and just vote.</p>
     <div class="reasons-grid" id="reasons-grid" role="radiogroup" aria-label="Reason"></div>
-    <label class="comment-label" for="comment">supplementary testimony <span class="optional">(optional)</span></label>
-    <input type="text" id="comment" class="comment-input" maxlength="100" placeholder="e.g. 90 minutes of sideways backpasses" />
+    <label class="comment-label" for="comment">Add a short comment <span class="optional">(optional)</span></label>
+    <input type="text" id="comment" class="comment-input" maxlength="100" placeholder="e.g. 90 minutes of backwards passing" />
     <div class="char-count"><span id="char-count">0</span>/100</div>
-    <button class="vote-btn" id="vote-submit">cast dynamic verdict</button>
+    <button class="vote-btn" id="vote-submit">Cast vote</button>
     <div class="modal-error hidden" id="modal-error"></div>
   </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script type="module" src="./app.js"></script>
+<script type="module" src="app.js"></script>
+
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e73dff5b5ce54a71905c7f411a12dfab"}'></script>
 </body>
 </html>
