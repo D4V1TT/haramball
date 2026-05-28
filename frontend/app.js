@@ -630,6 +630,20 @@ async function init() {
   // Wire the "See full leaderboard" link in the top preview
   const tpLink = $('top-preview-link');
   if (tpLink) tpLink.addEventListener('click', () => switchView('leaderboard'));
+
+  // Honor URL hash on load (e.g. /#leaderboard from other pages routes to that view).
+  // Also re-honor on hashchange so in-page navigation works.
+  const hashToView = h => {
+    const v = (h || '').replace(/^#/, '').trim();
+    return ['vote', 'leaderboard', 'about'].includes(v) ? v : null;
+  };
+  const applyHashView = () => {
+    const v = hashToView(window.location.hash);
+    if (v) switchView(v);
+  };
+  applyHashView();
+  window.addEventListener('hashchange', applyHashView);
+
   await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
   renderTeams();
 }
