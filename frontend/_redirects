@@ -1,0 +1,6 @@
+# Cloudflare Pages redirects file.
+#
+# Currently empty: Cloudflare Pages already auto-handles the .html extension
+# (strips it for "clean URLs"), so explicit redirects aren't needed for our pages.
+#
+# Add rules here if specific custom redirects are needed in the future.
