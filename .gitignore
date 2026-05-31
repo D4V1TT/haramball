@@ -1,0 +1,20 @@
+# OS / editor cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node (if tooling is ever added)
+node_modules/
+
+# NOTE: frontend/env.js is intentionally committed.
+# It contains only public Supabase anon keys (writes are protected by
+# Row Level Security), and the static deploy needs it at runtime.

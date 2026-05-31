@@ -94,6 +94,7 @@ const cache = {
   teams: null,
   leagues: null,
   reasons: null,
+  countries: null,
 };
 
 // ---------- Public API ----------
@@ -169,6 +170,19 @@ export const api = {
     return await rpc('team_reason_breakdown', { p_team_id: team_id, p_period: period }) || [];
   },
 
+  // Per-team vote totals + rank (used by the team detail pages).
+  // Returns null if the team has no row yet (no votes) or the RPC is unavailable,
+  // so callers can degrade gracefully.
+  async getTeamStats(team_id) {
+    try {
+      const data = await rpc('team_stats', { p_team_id: team_id });
+      return (data && data.length > 0) ? data[0] : null;
+    } catch (e) {
+      console.warn('[haramball] team_stats unavailable', e?.message || e);
+      return null;
+    }
+  },
+
   async getTeamComments(team_id, limit = 25) {
     return await rpc('team_recent_comments', { p_team_id: team_id, p_limit: limit }) || [];
   },
@@ -192,8 +206,70 @@ export const api = {
     });
   },
 
+  // ===================== COUNTRIES (national teams) =====================
+  // Parallel contest for the World Cup. Mirrors the club methods above.
+  async getCountries() {
+    if (cache.countries) return cache.countries;
+    const { data, error } = await supabase
+      .from('national_teams')
+      .select('id, name, confederation, code, color')
+      .eq('active', true)
+      .order('name');
+    if (error) throw err(error.message, error.code);
+    cache.countries = data || [];
+    return cache.countries;
+  },
+
+  async getCountryLeaderboard({ period = 'week', limit = 50, confederation = null } = {}) {
+    return await rpc('country_leaderboard', {
+      p_period: period, p_limit: limit, p_confederation: confederation,
+    }) || [];
+  },
+
+  async getCountryReasons(country_id, period = 'all') {
+    return await rpc('country_reason_breakdown', { p_country_id: country_id, p_period: period }) || [];
+  },
+
+  async getCountryComments(country_id, limit = 25) {
+    return await rpc('country_recent_comments', { p_country_id: country_id, p_limit: limit }) || [];
+  },
+
+  async getCountryStats(country_id) {
+    try {
+      const data = await rpc('country_stats', { p_country_id: country_id });
+      return (data && data.length > 0) ? data[0] : null;
+    } catch (e) {
+      console.warn('[haramball] country_stats unavailable', e?.message || e);
+      return null;
+    }
+  },
+
+  async getCountryGlobalStats() {
+    const data = await rpc('country_global_stats');
+    return data?.[0] || { total_votes: 0, votes_today: 0, votes_this_week: 0, active_countries: 0 };
+  },
+
+  async hasVotedCountryToday() {
+    const data = await rpc('has_voted_country_today', { p_voter_id: getVoterId() });
+    if (data && data.length > 0) return { voted: true, ...data[0] };
+    return { voted: false };
+  },
+
+  async castCountryVote({ country_id, reason_tag = null, comment = null }) {
+    if (!country_id) throw err('country_id required', '22023');
+    const trimmed = (comment || '').trim().slice(0, 100) || null;
+    return await rpc('cast_country_vote', {
+      p_voter_id:   getVoterId(),
+      p_country_id: country_id,
+      p_reason_tag: reason_tag,
+      p_comment:    trimmed,
+      p_user_agent: (navigator.userAgent || '').slice(0, 200),
+      p_ip_country: null,
+    });
+  },
+
   // Utility: clear cached reference data (e.g. after a manual update)
-  _clearCache() { cache.teams = null; cache.leagues = null; cache.reasons = null; },
+  _clearCache() { cache.teams = null; cache.leagues = null; cache.reasons = null; cache.countries = null; },
 
   // Expose voter id for debug, never for trust.
   _voterId() { return getVoterId(); },
