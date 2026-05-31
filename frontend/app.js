@@ -61,17 +61,33 @@ function track(eventName, props = {}) {
 
 // ---------- Application state ----------
 const state = {
+  mode: 'clubs',              // 'clubs' | 'countries'
   teams: [],
+  countries: [],
   leagues: [],
   reasons: [],
-  votedToday: { voted: false },
+  votedToday: { voted: false },         // club vote status (today)
+  countryVotedToday: { voted: false },  // country vote status (today, independent)
   selectedTeam: null,
+  selectedIsCountry: false,
   selectedReason: null,
   filterConf: 'all',
   filterLeague: 'all',
   searchQuery: '',
   lbPeriod: 'week',
 };
+
+// ---------- Mode helpers ----------
+const isCountries = () => state.mode === 'countries';
+// The list of votable items for the current mode.
+const currentItems = () => isCountries() ? state.countries : state.teams;
+// The vote-status object for the current mode.
+const currentVoted = () => isCountries() ? state.countryVotedToday : state.votedToday;
+// Secondary line for a card/row: league+country for clubs, confederation for countries.
+function itemMeta(item) {
+  if (isCountries()) return item.confederation || '';
+  return [item.league, item.country].filter(Boolean).join(' · ');
+}
 
 // ---------- View routing ----------
 function switchView(view) {
@@ -80,19 +96,85 @@ function switchView(view) {
   const target = $(`view-${view}`);
   if (target) target.classList.remove('hidden');
   if (view === 'leaderboard') loadLeaderboard();
+  // Keep the address bar in sync with the active view, otherwise a stale
+  // #leaderboard (e.g. arriving from another page) sticks on every view.
+  const targetHash = view === 'vote' ? '' : `#${view}`;
+  if (window.location.hash !== targetHash) {
+    history.replaceState(null, '', window.location.pathname + window.location.search + targetHash);
+  }
   track('view_switched', { view });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 window.switchView = switchView; // exposed for the logo onclick handler
 
+// ---------- Mode switching (Clubs <-> Countries) ----------
+async function switchMode(mode) {
+  if (mode !== 'clubs' && mode !== 'countries') return;
+  if (mode === state.mode) return;
+  state.mode = mode;
+
+  // Reflect on every mode toggle (there's one in the hero and one on the board).
+  $$('.mode-btn').forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+
+  // Countries have no leagues — hide the league filter, reset it.
+  const leagueFilter = $('league-filter');
+  if (leagueFilter) leagueFilter.classList.toggle('hidden', isCountries());
+  state.filterLeague = 'all';
+  if (leagueFilter) leagueFilter.value = 'all';
+
+  // Reset the search when switching modes (a club query rarely matches countries).
+  state.searchQuery = '';
+  const searchInput = $('search');
+  if (searchInput) {
+    searchInput.value = '';
+    searchInput.placeholder = isCountries()
+      ? 'Search any country to vote against…'
+      : 'Search any team to vote against…';
+  }
+  const sc = $('search-clear');
+  if (sc) sc.classList.add('hidden');
+
+  // Ensure country data is present (lazy: may still be loading at first toggle).
+  if (isCountries() && state.countries.length === 0) {
+    try { state.countries = await api.getCountries(); } catch { state.countries = []; }
+  }
+
+  track('mode_switched', { mode });
+
+  // Re-render everything that depends on mode.
+  renderVoteStatus();
+  renderTeams();
+  renderRandomHints();
+  renderQuickVote();
+  loadTopPreview();
+  loadGlobalStats();   // hero stats are per-mode (own vote/this-week/listed counts)
+  // If the leaderboard view is currently visible, reload it too.
+  if (!$('view-leaderboard').classList.contains('hidden')) loadLeaderboard();
+}
+window.switchMode = switchMode;
+
 // ---------- Stats / hero ----------
 async function loadGlobalStats() {
   try {
-    const s = await api.getGlobalStats();
-    $('stat-votes').textContent = fmtNum(s.total_votes);
-    $('stat-week').textContent  = fmtNum(s.votes_this_week);
-    $('stat-teams').textContent = fmtNum(s.active_teams);
-    $('about-team-count').textContent = fmtNum(s.active_teams);
+    const lbl = $('stat-teams-lbl');
+    if (isCountries()) {
+      const s = await api.getCountryGlobalStats();
+      $('stat-votes').textContent = fmtNum(s.total_votes);
+      $('stat-week').textContent  = fmtNum(s.votes_this_week);
+      $('stat-teams').textContent = fmtNum(s.active_countries);
+      if (lbl) lbl.textContent = 'Countries listed';
+    } else {
+      const s = await api.getGlobalStats();
+      $('stat-votes').textContent = fmtNum(s.total_votes);
+      $('stat-week').textContent  = fmtNum(s.votes_this_week);
+      $('stat-teams').textContent = fmtNum(s.active_teams);
+      if (lbl) lbl.textContent = 'Teams listed';
+      $('about-team-count').textContent = fmtNum(s.active_teams);
+    }
   } catch (e) {
     console.error('stats failed', e);
   }
@@ -104,7 +186,9 @@ async function loadTopPreview() {
   const list = $('top-preview-list');
   if (!wrap || !list) return;  // Elements might not exist in older HTML — skip gracefully
   try {
-    const rows = await api.getLeaderboard({ period: 'week', limit: 3 });
+    const rows = isCountries()
+      ? await api.getCountryLeaderboard({ period: 'week', limit: 3 })
+      : await api.getLeaderboard({ period: 'week', limit: 3 });
     if (!rows || rows.length === 0) {
       wrap.classList.add('hidden');
       return;
@@ -115,12 +199,17 @@ async function loadTopPreview() {
       if (rank === 1) rankCls = 'gold';
       else if (rank === 2) rankCls = 'silver';
       else if (rank === 3) rankCls = 'bronze';
-      const meta = [r.league_name, r.country_name].filter(Boolean).join(' · ');
-      return `<div class="tp-row" data-team="${escapeHtml(r.team_id)}">
+      const rid   = isCountries() ? r.country_id    : r.team_id;
+      const rname = isCountries() ? r.country_name  : r.team_name;
+      const rcol  = isCountries() ? r.country_color : r.team_color;
+      const meta = isCountries()
+        ? (r.confederation || '')
+        : [r.league_name, r.country_name].filter(Boolean).join(' · ');
+      return `<div class="tp-row" data-team="${escapeHtml(rid)}">
         <div class="tp-rank ${rankCls}">${rank}</div>
-        <div class="tp-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</div>
+        <div class="tp-badge" style="background:${escapeHtml(rcol || '#444')}">${escapeHtml(getInitials(rname))}</div>
         <div class="tp-info">
-          <div class="tp-name">${escapeHtml(r.team_name)}</div>
+          <div class="tp-name">${escapeHtml(rname)}</div>
           <div class="tp-meta">${escapeHtml(meta)}</div>
         </div>
         <div>
@@ -131,7 +220,7 @@ async function loadTopPreview() {
     }).join('');
 
     // Click a top row to open the vote modal for that team
-    const canVote = !state.votedToday.voted;
+    const canVote = !currentVoted().voted;
     $$('.tp-row', list).forEach(row => {
       if (!canVote) row.classList.add('disabled');
       row.addEventListener('click', () => {
@@ -150,38 +239,45 @@ async function loadTopPreview() {
 
 // ---------- Voting status ----------
 async function refreshVotedToday() {
-  try {
-    state.votedToday = await api.hasVotedToday();
-  } catch (e) {
-    console.error('voted-today failed', e);
-    state.votedToday = { voted: false };
-  }
+  // Club and country votes are independent (one of each per day).
+  const [club, country] = await Promise.allSettled([
+    api.hasVotedToday(),
+    api.hasVotedCountryToday(),
+  ]);
+  state.votedToday        = club.status === 'fulfilled'    ? club.value    : { voted: false };
+  state.countryVotedToday = country.status === 'fulfilled' ? country.value : { voted: false };
   renderVoteStatus();
 }
 
 function renderVoteStatus() {
   const el = $('vote-status');
   const text = $('vote-status-text');
-  if (state.votedToday.voted) {
-    const team = state.teams.find(t => t.id === state.votedToday.team_id);
+  const voted = currentVoted();
+  const noun = isCountries() ? 'country' : 'team';
+  if (voted.voted) {
+    const id = isCountries() ? voted.country_id : voted.team_id;
+    const item = currentItems().find(t => t.id === id);
     el.classList.add('voted');
-    text.textContent = team
-      ? `You voted ${team.name} today. Come back tomorrow.`
+    text.textContent = item
+      ? `You voted ${item.name} today. Come back tomorrow.`
       : `You've voted today. Come back tomorrow.`;
   } else {
     el.classList.remove('voted');
-    text.textContent = 'You can vote once per day. Pick your haramball team below.';
+    text.textContent = `You can vote once per day. Pick your haramball ${noun} below.`;
   }
 }
 
 // ---------- Teams grid ----------
 function filteredTeams() {
   const q = state.searchQuery.toLowerCase().trim();
-  return state.teams.filter(t => {
-    if (state.filterConf   !== 'all' && t.confederation !== state.filterConf) return false;
-    if (state.filterLeague !== 'all' && t.league        !== state.filterLeague) return false;
+  return currentItems().filter(t => {
+    if (state.filterConf !== 'all' && t.confederation !== state.filterConf) return false;
+    // League filter only applies to clubs.
+    if (!isCountries() && state.filterLeague !== 'all' && t.league !== state.filterLeague) return false;
     if (q) {
-      const hay = `${t.name} ${t.short_name || ''} ${t.league || ''} ${t.country || ''} ${t.city || ''}`.toLowerCase();
+      const hay = isCountries()
+        ? `${t.name} ${t.code || ''} ${t.confederation || ''}`.toLowerCase()
+        : `${t.name} ${t.short_name || ''} ${t.league || ''} ${t.country || ''} ${t.city || ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -193,10 +289,13 @@ function renderTeams() {
   const empty = $('teams-empty');
   const meta = $('teams-meta');
   const list = filteredTeams();
-  const canVote = !state.votedToday.voted;
-  const myLastTeam = state.votedToday.team_id || null;
+  const voted = currentVoted();
+  const canVote = !voted.voted;
+  const myLastId = (isCountries() ? voted.country_id : voted.team_id) || null;
+  const noun = isCountries() ? 'countries' : 'teams';
+  const total = currentItems().length;
 
-  meta.textContent = `${list.length} of ${state.teams.length} teams`;
+  meta.textContent = `${list.length} of ${total} ${noun}`;
 
   if (list.length === 0) {
     grid.innerHTML = '';
@@ -208,13 +307,13 @@ function renderTeams() {
   // Cap render to 240 cards per pass to keep DOM cheap on mobile
   const capped = list.slice(0, 240);
   grid.innerHTML = capped.map(t => {
-    const isMyVote = !canVote && t.id === myLastTeam;
+    const isMyVote = !canVote && t.id === myLastId;
     const cls = ['team-card'];
     if (!canVote) cls.push('disabled');
     if (isMyVote) cls.push('voted');
     const meta = isMyVote
-      ? `${escapeHtml(t.league || '')} · Your vote`
-      : escapeHtml([t.league, t.country].filter(Boolean).join(' · '));
+      ? `${escapeHtml(isCountries() ? (t.confederation || '') : (t.league || ''))} · Your vote`
+      : escapeHtml(itemMeta(t));
     return `<button class="${cls.join(' ')}" data-team="${escapeHtml(t.id)}" role="listitem"${!canVote ? ' disabled' : ''}>
       <span class="team-badge" style="background:${escapeHtml(t.color || '#444')}">${escapeHtml(getInitials(t.name))}</span>
       <span class="team-info">
@@ -225,7 +324,7 @@ function renderTeams() {
   }).join('');
 
   if (capped.length < list.length) {
-    meta.textContent = `Showing 240 of ${list.length} matching teams (${state.teams.length} total). Refine your search.`;
+    meta.textContent = `Showing 240 of ${list.length} matching ${noun} (${total} total). Refine your search.`;
   }
   // Note: click handler is attached once during init() using event delegation.
   // See bindGridClickHandler() — we don't re-attach handlers on every render.
@@ -261,12 +360,14 @@ function rebuildLeagueFilter() {
 
 // ---------- Vote modal ----------
 function openVoteModal(teamId) {
-  const team = state.teams.find(t => t.id === teamId);
+  const team = currentItems().find(t => t.id === teamId);
   if (!team) return;
   state.selectedTeam = team;
+  state.selectedIsCountry = isCountries();
   state.selectedReason = null;
 
   track('vote_modal_opened', {
+    mode: state.mode,
     team_id: team.id,
     league: team.league,
     confederation: team.confederation
@@ -275,7 +376,7 @@ function openVoteModal(teamId) {
   $('modal-badge').textContent = getInitials(team.name);
   $('modal-badge').style.background = team.color || '#444';
   $('modal-team-name').textContent = team.name;
-  $('modal-team-meta').textContent = [team.league, team.country].filter(Boolean).join(' · ');
+  $('modal-team-meta').textContent = itemMeta(team);
 
   // Render reason buttons
   const grid = $('reasons-grid');
@@ -325,13 +426,23 @@ async function submitVote() {
   errEl.classList.add('hidden');
   btn.disabled = true; btn.textContent = 'Casting…';
   const hasComment = ($('comment').value || '').trim().length > 0;
+  const asCountry = state.selectedIsCountry;
   try {
-    await api.castVote({
-      team_id:    state.selectedTeam.id,
-      reason_tag: state.selectedReason,  // can be null — reason is optional
-      comment:    $('comment').value,
-    });
+    if (asCountry) {
+      await api.castCountryVote({
+        country_id: state.selectedTeam.id,
+        reason_tag: state.selectedReason,
+        comment:    $('comment').value,
+      });
+    } else {
+      await api.castVote({
+        team_id:    state.selectedTeam.id,
+        reason_tag: state.selectedReason,  // can be null — reason is optional
+        comment:    $('comment').value,
+      });
+    }
     track('vote_cast', {
+      mode: asCountry ? 'countries' : 'clubs',
       team_id: state.selectedTeam.id,
       league: state.selectedTeam.league,
       confederation: state.selectedTeam.confederation,
@@ -369,7 +480,9 @@ async function loadLeaderboard() {
   loading.classList.remove('hidden');
 
   try {
-    const rows = await api.getLeaderboard({ period: state.lbPeriod, limit: 50 });
+    const rows = isCountries()
+      ? await api.getCountryLeaderboard({ period: state.lbPeriod, limit: 50 })
+      : await api.getLeaderboard({ period: state.lbPeriod, limit: 50 });
     loading.classList.add('hidden');
 
     if (!rows || rows.length === 0) {
@@ -383,15 +496,20 @@ async function loadLeaderboard() {
       if (rank === 1) rankCls = 'gold';
       else if (rank === 2) rankCls = 'silver';
       else if (rank === 3) rankCls = 'bronze';
-      const meta = [r.league_name, r.country_name].filter(Boolean).join(' · ');
+      // Country rows use country_* fields; club rows use team_*/league_name.
+      const teamName  = isCountries() ? r.country_name  : r.team_name;
+      const teamColor = isCountries() ? r.country_color : r.team_color;
+      const meta = isCountries()
+        ? (r.confederation || '')
+        : [r.league_name, r.country_name].filter(Boolean).join(' · ');
       const reason = r.top_reason_label
         ? `<div class="lb-reason">${escapeHtml(r.top_reason_label)}</div>`
         : '';
       return `<div class="lb-row">
         <div class="lb-rank ${rankCls}">${rank}</div>
-        <div class="lb-team-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</div>
+        <div class="lb-team-badge" style="background:${escapeHtml(teamColor || '#444')}">${escapeHtml(getInitials(teamName))}</div>
         <div class="lb-team-info">
-          <div class="lb-team-name">${escapeHtml(r.team_name)}</div>
+          <div class="lb-team-name">${escapeHtml(teamName)}</div>
           <div class="lb-team-meta">${escapeHtml(meta)}</div>
           ${reason}
         </div>
@@ -418,11 +536,11 @@ function renderAboutCounts() {
 // Different teams every page load - keeps the homepage feeling alive and surfaces variety.
 function renderRandomHints() {
   const container = $('hero-search-hints');
-  if (!container || !state.teams || state.teams.length === 0) return;
+  const items = currentItems();
+  if (!container || !items || items.length === 0) return;
 
-  // Pick 3 distinct random teams. Bias slightly toward bigger leagues so they're recognizable.
-  // We pick from the full pool but skip teams with very short names (often acronyms users don't know).
-  const pool = state.teams.filter(t => t.name && t.name.length >= 4);
+  // Pick 3 distinct random items. Skip very short names (often acronyms users don't know).
+  const pool = items.filter(t => t.name && t.name.length >= 4);
   if (pool.length < 3) return;
   const picks = [];
   const usedIds = new Set();
@@ -457,31 +575,34 @@ async function renderQuickVote() {
   const wrap = $('quick-vote');
   if (!grid || !wrap) return;
 
-  let rows;
+  let rows = [];
   try {
-    rows = await api.getLeaderboard({ period: 'all', limit: 5 });
+    rows = isCountries()
+      ? await api.getCountryLeaderboard({ period: 'all', limit: 5 })
+      : await api.getLeaderboard({ period: 'all', limit: 5 });
   } catch (e) {
-    // If the leaderboard fetch fails, hide the section rather than show an error.
-    wrap.style.display = 'none';
-    return;
+    rows = [];
   }
 
-  // Need at least a few teams to make the row worthwhile.
-  if (!Array.isArray(rows) || rows.length < 3) {
-    wrap.style.display = 'none';
-    return;
-  }
+  // Top picks = the top five from the all-time leaderboard.
+  const picks = (Array.isArray(rows) ? rows : []).slice(0, 5).map(r => ({
+    id:    isCountries() ? r.country_id    : r.team_id,
+    name:  isCountries() ? r.country_name  : r.team_name,
+    color: isCountries() ? r.country_color : r.team_color,
+  }));
+
+  // Nothing voted yet in this mode — hide the row rather than show an empty one.
+  if (picks.length === 0) { wrap.style.display = 'none'; return; }
 
   wrap.style.display = '';
-  grid.innerHTML = rows.map(r => `
-    <button class="qv-card" type="button" data-team="${escapeHtml(r.team_id)}" aria-label="Vote against ${escapeHtml(r.team_name)}">
-      <span class="qv-badge" style="background:${escapeHtml(r.team_color || '#444')}">${escapeHtml(getInitials(r.team_name))}</span>
+  grid.innerHTML = picks.map(p => `
+    <button class="qv-card" type="button" data-team="${escapeHtml(p.id)}" aria-label="Vote against ${escapeHtml(p.name)}">
+      <span class="qv-badge" style="background:${escapeHtml(p.color || '#444')}">${escapeHtml(getInitials(p.name))}</span>
       <span class="qv-info">
-        <span class="qv-name">${escapeHtml(r.team_name)}</span>
+        <span class="qv-name">${escapeHtml(p.name)}</span>
         <span class="qv-action">Vote ⚖</span>
       </span>
-    </button>
-  `).join('');
+    </button>`).join('');
 
   // Event delegation: tapping a card opens the vote modal for that team.
   grid.querySelectorAll('.qv-card').forEach(card => {
@@ -501,6 +622,9 @@ async function init() {
       b.addEventListener('click', () => switchView(b.dataset.view));
     }
   });
+  // Mode toggles (Clubs / Countries) — there may be more than one on the page.
+  $$('.mode-btn').forEach(b => b.addEventListener('click', () => switchMode(b.dataset.mode)));
+
   $$('.lb-tab').forEach(t => t.addEventListener('click', () => {
     $$('.lb-tab').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
@@ -607,6 +731,10 @@ async function init() {
   });
   $('vote-submit').addEventListener('click', submitVote);
 
+  // Country list loads independently — if the national_teams table isn't
+  // seeded yet, clubs still work and the Countries tab is simply empty.
+  api.getCountries().then(c => { state.countries = c; }).catch(() => { state.countries = []; });
+
   // Load reference data + voted-today + stats in parallel.
   try {
     const [teams, leagues, reasons] = await Promise.all([
@@ -646,6 +774,30 @@ async function init() {
 
   await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
   renderTeams();
+
+  // Deep-link from a detail page:
+  //   /?vote=<team_id>     opens the club vote modal
+  //   /?cvote=<country_id> switches to Countries and opens the country vote modal
+  // (the "Vote against …" buttons on team/league/country pages).
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const clubId = params.get('vote');
+    const countryId = params.get('cvote');
+    if (clubId || countryId) {
+      // Clean the URL so a refresh / share doesn't re-trigger the modal.
+      history.replaceState(null, '', window.location.pathname + window.location.hash);
+      if (countryId) {
+        await switchMode('countries');
+        const c = state.countries.find(t => t.id === countryId);
+        if (c && !state.countryVotedToday.voted) openVoteModal(countryId);
+        else if (c) showToast('You already voted on a country today. Come back tomorrow.');
+      } else {
+        const team = state.teams.find(t => t.id === clubId);
+        if (team && !state.votedToday.voted) openVoteModal(clubId);
+        else if (team) showToast('You already voted today. Come back tomorrow.');
+      }
+    }
+  } catch (e) { /* non-fatal */ }
 }
 
 init();
