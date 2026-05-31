@@ -570,26 +570,6 @@ function renderRandomHints() {
 // the default buttons, which can entrench the leaderboard order. Chosen deliberately
 // to keep the cards always-current and zero-maintenance. If the leaderboard ever feels
 // "stuck", consider excluding rank #1 or mixing in canonical teams.
-// Curated "top picks" used when the live leaderboard is too sparse to fill
-// the quick-vote row (e.g. countries before the tournament). Returns up to 5
-// items normalised to { id, name, color }, padded with random recognisable
-// entries so the row is always full.
-function curatedPicks() {
-  const ids = isCountries()
-    ? ['brazil', 'argentina', 'france', 'england', 'germany', 'spain', 'italy', 'portugal', 'netherlands', 'croatia', 'uruguay', 'morocco']
-    : [];
-  const byId = new Map(currentItems().map(t => [t.id, t]));
-  const picks = ids.map(id => byId.get(id)).filter(Boolean);
-  if (picks.length < 5) {
-    const chosen = new Set(picks.map(p => p.id));
-    const pool = currentItems().filter(t => t.name && t.name.length >= 4 && !chosen.has(t.id));
-    while (picks.length < 5 && pool.length) {
-      picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-    }
-  }
-  return picks.slice(0, 5).map(t => ({ id: t.id, name: t.name, color: t.color }));
-}
-
 async function renderQuickVote() {
   const grid = $('quick-vote-grid');
   const wrap = $('quick-vote');
@@ -604,28 +584,15 @@ async function renderQuickVote() {
     rows = [];
   }
 
-  // Normalise leaderboard rows to { id, name, color }.
-  let picks = (Array.isArray(rows) ? rows : []).map(r => ({
+  // Top picks = the top five from the all-time leaderboard.
+  const picks = (Array.isArray(rows) ? rows : []).slice(0, 5).map(r => ({
     id:    isCountries() ? r.country_id    : r.team_id,
     name:  isCountries() ? r.country_name  : r.team_name,
     color: isCountries() ? r.country_color : r.team_color,
   }));
-  const fromVotes = picks.length >= 3;
 
-  // Fallback when there aren't enough votes yet: curated, recognisable
-  // "top picks" so the section is useful from day one (e.g. before the
-  // World Cup, when country votes are empty).
-  if (!fromVotes) picks = curatedPicks();
-
-  if (picks.length < 3) { wrap.style.display = 'none'; return; }
-
-  // Label reflects whether these are real leaders or suggestions.
-  const label = wrap.querySelector('.quick-vote-label');
-  if (label) {
-    label.textContent = fromVotes
-      ? 'Or convict a usual suspect:'
-      : (isCountries() ? 'Top picks to convict:' : 'Or convict a usual suspect:');
-  }
+  // Nothing voted yet in this mode — hide the row rather than show an empty one.
+  if (picks.length === 0) { wrap.style.display = 'none'; return; }
 
   wrap.style.display = '';
   grid.innerHTML = picks.map(p => `
