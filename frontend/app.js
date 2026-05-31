@@ -96,6 +96,12 @@ function switchView(view) {
   const target = $(`view-${view}`);
   if (target) target.classList.remove('hidden');
   if (view === 'leaderboard') loadLeaderboard();
+  // Keep the address bar in sync with the active view, otherwise a stale
+  // #leaderboard (e.g. arriving from another page) sticks on every view.
+  const targetHash = view === 'vote' ? '' : `#${view}`;
+  if (window.location.hash !== targetHash) {
+    history.replaceState(null, '', window.location.pathname + window.location.search + targetHash);
+  }
   track('view_switched', { view });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -145,6 +151,7 @@ async function switchMode(mode) {
   renderRandomHints();
   renderQuickVote();
   loadTopPreview();
+  loadGlobalStats();   // hero stats are per-mode (own vote/this-week/listed counts)
   // If the leaderboard view is currently visible, reload it too.
   if (!$('view-leaderboard').classList.contains('hidden')) loadLeaderboard();
 }
@@ -153,11 +160,21 @@ window.switchMode = switchMode;
 // ---------- Stats / hero ----------
 async function loadGlobalStats() {
   try {
-    const s = await api.getGlobalStats();
-    $('stat-votes').textContent = fmtNum(s.total_votes);
-    $('stat-week').textContent  = fmtNum(s.votes_this_week);
-    $('stat-teams').textContent = fmtNum(s.active_teams);
-    $('about-team-count').textContent = fmtNum(s.active_teams);
+    const lbl = $('stat-teams-lbl');
+    if (isCountries()) {
+      const s = await api.getCountryGlobalStats();
+      $('stat-votes').textContent = fmtNum(s.total_votes);
+      $('stat-week').textContent  = fmtNum(s.votes_this_week);
+      $('stat-teams').textContent = fmtNum(s.active_countries);
+      if (lbl) lbl.textContent = 'Countries listed';
+    } else {
+      const s = await api.getGlobalStats();
+      $('stat-votes').textContent = fmtNum(s.total_votes);
+      $('stat-week').textContent  = fmtNum(s.votes_this_week);
+      $('stat-teams').textContent = fmtNum(s.active_teams);
+      if (lbl) lbl.textContent = 'Teams listed';
+      $('about-team-count').textContent = fmtNum(s.active_teams);
+    }
   } catch (e) {
     console.error('stats failed', e);
   }
@@ -553,42 +570,72 @@ function renderRandomHints() {
 // the default buttons, which can entrench the leaderboard order. Chosen deliberately
 // to keep the cards always-current and zero-maintenance. If the leaderboard ever feels
 // "stuck", consider excluding rank #1 or mixing in canonical teams.
+// Curated "top picks" used when the live leaderboard is too sparse to fill
+// the quick-vote row (e.g. countries before the tournament). Returns up to 5
+// items normalised to { id, name, color }, padded with random recognisable
+// entries so the row is always full.
+function curatedPicks() {
+  const ids = isCountries()
+    ? ['brazil', 'argentina', 'france', 'england', 'germany', 'spain', 'italy', 'portugal', 'netherlands', 'croatia', 'uruguay', 'morocco']
+    : [];
+  const byId = new Map(currentItems().map(t => [t.id, t]));
+  const picks = ids.map(id => byId.get(id)).filter(Boolean);
+  if (picks.length < 5) {
+    const chosen = new Set(picks.map(p => p.id));
+    const pool = currentItems().filter(t => t.name && t.name.length >= 4 && !chosen.has(t.id));
+    while (picks.length < 5 && pool.length) {
+      picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+  }
+  return picks.slice(0, 5).map(t => ({ id: t.id, name: t.name, color: t.color }));
+}
+
 async function renderQuickVote() {
   const grid = $('quick-vote-grid');
   const wrap = $('quick-vote');
   if (!grid || !wrap) return;
 
-  let rows;
+  let rows = [];
   try {
     rows = isCountries()
       ? await api.getCountryLeaderboard({ period: 'all', limit: 5 })
       : await api.getLeaderboard({ period: 'all', limit: 5 });
   } catch (e) {
-    // If the leaderboard fetch fails, hide the section rather than show an error.
-    wrap.style.display = 'none';
-    return;
+    rows = [];
   }
 
-  // Need at least a few teams to make the row worthwhile.
-  if (!Array.isArray(rows) || rows.length < 3) {
-    wrap.style.display = 'none';
-    return;
+  // Normalise leaderboard rows to { id, name, color }.
+  let picks = (Array.isArray(rows) ? rows : []).map(r => ({
+    id:    isCountries() ? r.country_id    : r.team_id,
+    name:  isCountries() ? r.country_name  : r.team_name,
+    color: isCountries() ? r.country_color : r.team_color,
+  }));
+  const fromVotes = picks.length >= 3;
+
+  // Fallback when there aren't enough votes yet: curated, recognisable
+  // "top picks" so the section is useful from day one (e.g. before the
+  // World Cup, when country votes are empty).
+  if (!fromVotes) picks = curatedPicks();
+
+  if (picks.length < 3) { wrap.style.display = 'none'; return; }
+
+  // Label reflects whether these are real leaders or suggestions.
+  const label = wrap.querySelector('.quick-vote-label');
+  if (label) {
+    label.textContent = fromVotes
+      ? 'Or convict a usual suspect:'
+      : (isCountries() ? 'Top picks to convict:' : 'Or convict a usual suspect:');
   }
 
   wrap.style.display = '';
-  grid.innerHTML = rows.map(r => {
-    const rid   = isCountries() ? r.country_id    : r.team_id;
-    const rname = isCountries() ? r.country_name  : r.team_name;
-    const rcol  = isCountries() ? r.country_color : r.team_color;
-    return `
-    <button class="qv-card" type="button" data-team="${escapeHtml(rid)}" aria-label="Vote against ${escapeHtml(rname)}">
-      <span class="qv-badge" style="background:${escapeHtml(rcol || '#444')}">${escapeHtml(getInitials(rname))}</span>
+  grid.innerHTML = picks.map(p => `
+    <button class="qv-card" type="button" data-team="${escapeHtml(p.id)}" aria-label="Vote against ${escapeHtml(p.name)}">
+      <span class="qv-badge" style="background:${escapeHtml(p.color || '#444')}">${escapeHtml(getInitials(p.name))}</span>
       <span class="qv-info">
-        <span class="qv-name">${escapeHtml(rname)}</span>
+        <span class="qv-name">${escapeHtml(p.name)}</span>
         <span class="qv-action">Vote ⚖</span>
       </span>
-    </button>`;
-  }).join('');
+    </button>`).join('');
 
   // Event delegation: tapping a card opens the vote modal for that team.
   grid.querySelectorAll('.qv-card').forEach(card => {
