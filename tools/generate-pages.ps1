@@ -597,6 +597,26 @@ foreach ($t in $teams) {
 [void]$tsb.AppendLine('on conflict (id) do update set')
 [void]$tsb.AppendLine('  league_id = excluded.league_id, name = excluded.name, short_name = excluded.short_name,')
 [void]$tsb.AppendLine('  color = excluded.color, city = excluded.city, active = true, updated_at = now();')
+[void]$tsb.AppendLine('')
+
+# Deactivate any club no longer in teams-all.json (e.g. old variants replaced
+# during a league refresh). Non-destructive: getTeams() filters active=true,
+# and votes/FKs are preserved. teams-all.json is the single source of truth.
+[void]$tsb.AppendLine('-- Retire clubs that are no longer in the dataset (prevents duplicates from earlier imports).')
+[void]$tsb.AppendLine('update public.teams set active = false, updated_at = now() where id not in (')
+$idList = @()
+foreach ($t in $teams) { $idList += "'$(Esc-Sql $t.id)'" }
+# Emit ~12 ids per line for readability.
+$chunk = @()
+for ($k = 0; $k -lt $idList.Count; $k++) {
+  $chunk += $idList[$k]
+  if ($chunk.Count -eq 12 -or $k -eq ($idList.Count - 1)) {
+    $sep = if ($k -eq ($idList.Count - 1)) { '' } else { ',' }
+    [void]$tsb.AppendLine('  ' + ($chunk -join ', ') + $sep)
+    $chunk = @()
+  }
+}
+[void]$tsb.AppendLine(');')
 Write-File (Join-Path $sqlDir '06-import-clubs.sql') $tsb.ToString()
 Write-Host "  -> 06-import-clubs.sql ($($leaguesRaw.Count) leagues, $($teams.Count) teams)." -ForegroundColor Green
 
