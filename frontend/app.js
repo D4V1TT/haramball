@@ -75,7 +75,11 @@ const state = {
   filterLeague: 'all',
   searchQuery: '',
   lbPeriod: 'week',
+  renderLimit: 0,   // how many cards are currently shown (grows via "Load more")
 };
+
+// How many cards to render at once. Smaller first paint on phones.
+const PAGE_SIZE = (typeof window !== 'undefined' && window.innerWidth <= 640) ? 60 : 120;
 
 // ---------- Mode helpers ----------
 const isCountries = () => state.mode === 'countries';
@@ -147,7 +151,7 @@ async function switchMode(mode) {
 
   // Re-render everything that depends on mode.
   renderVoteStatus();
-  renderTeams();
+  resetAndRenderTeams();
   renderRandomHints();
   renderQuickVote();
   loadTopPreview();
@@ -297,15 +301,24 @@ function renderTeams() {
 
   meta.textContent = `${list.length} of ${total} ${noun}`;
 
+  const moreBtn = $('teams-more');
+
   if (list.length === 0) {
     grid.innerHTML = '';
+    if (moreBtn) moreBtn.classList.add('hidden');
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
 
-  // Cap render to 240 cards per pass to keep DOM cheap on mobile
-  const capped = list.slice(0, 240);
+  // Render incrementally: only the first `renderLimit` cards are in the DOM,
+  // keeping first paint cheap even with thousands of teams. "Load more" grows it.
+  // EXCEPTION: when the user is actively searching, show ALL matches — a search
+  // result must never be hidden behind "Load more" (the whole point is to find it).
+  if (state.renderLimit <= 0) state.renderLimit = PAGE_SIZE;
+  const searching = state.searchQuery.trim().length > 0;
+  const shown = searching ? list.length : Math.min(state.renderLimit, list.length);
+  const capped = list.slice(0, shown);
   grid.innerHTML = capped.map(t => {
     const isMyVote = !canVote && t.id === myLastId;
     const cls = ['team-card'];
@@ -323,11 +336,29 @@ function renderTeams() {
     </button>`;
   }).join('');
 
-  if (capped.length < list.length) {
-    meta.textContent = `Showing 240 of ${list.length} matching ${noun} (${total} total). Refine your search.`;
+  // Toggle / label the "Load more" button.
+  if (moreBtn) {
+    const remaining = list.length - shown;
+    if (remaining > 0) {
+      moreBtn.textContent = `Load ${Math.min(PAGE_SIZE, remaining)} more (${remaining} left)`;
+      moreBtn.classList.remove('hidden');
+    } else {
+      moreBtn.classList.add('hidden');
+    }
+  }
+  if (shown < list.length) {
+    meta.textContent = `Showing ${shown} of ${list.length} matching ${noun} (${total} total)`;
   }
   // Note: click handler is attached once during init() using event delegation.
   // See bindGridClickHandler() — we don't re-attach handlers on every render.
+}
+
+// Reset pagination to the first page, then render. Use this whenever the
+// result set changes (search, filters, mode); plain renderTeams() preserves
+// the current "Load more" position (e.g. after casting a vote).
+function resetAndRenderTeams() {
+  state.renderLimit = PAGE_SIZE;
+  renderTeams();
 }
 
 // Attached ONCE during init - one click handler for the whole grid (event delegation)
@@ -656,7 +687,7 @@ async function init() {
       if (searchTimer) clearTimeout(searchTimer);
       searchTimer = setTimeout(() => {
         state.searchQuery = val;
-        renderTeams();
+        resetAndRenderTeams();
       }, 120);
     });
     // Pressing Enter: commit search immediately and jump to results
@@ -665,7 +696,7 @@ async function init() {
         e.preventDefault();
         if (searchTimer) clearTimeout(searchTimer);
         state.searchQuery = searchInput.value;
-        renderTeams();
+        resetAndRenderTeams();
         searchInput.blur();  // close mobile keyboard
         scrollToTeams();
       }
@@ -679,7 +710,7 @@ async function init() {
       if (!searchInput) return;
       if (searchTimer) clearTimeout(searchTimer);
       state.searchQuery = searchInput.value;
-      renderTeams();
+      resetAndRenderTeams();
       searchInput.blur();
       scrollToTeams();
     });
@@ -690,7 +721,7 @@ async function init() {
       state.searchQuery = '';
       searchClear.classList.add('hidden');
       searchInput.focus();
-      renderTeams();
+      resetAndRenderTeams();
     });
   }
   // Hint chips: event delegation on container so it works for dynamically-inserted chips too
@@ -705,18 +736,26 @@ async function init() {
       const sc = $('search-clear');
       if (sc) sc.classList.remove('hidden');
       $('search').focus();
-      renderTeams();
+      resetAndRenderTeams();
       scrollToTeams();
     });
   }
   $('conf-filter').addEventListener('change', e => {
     state.filterConf = e.target.value;
     rebuildLeagueFilter();
-    renderTeams();
+    resetAndRenderTeams();
   });
   $('league-filter').addEventListener('change', e => {
     state.filterLeague = e.target.value;
+    resetAndRenderTeams();
+  });
+
+  // "Load more" grows the visible page.
+  const moreBtn = $('teams-more');
+  if (moreBtn) moreBtn.addEventListener('click', () => {
+    state.renderLimit += PAGE_SIZE;
     renderTeams();
+    moreBtn.focus();
   });
 
   $('modal-close').addEventListener('click', closeVoteModal);

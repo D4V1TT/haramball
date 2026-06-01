@@ -536,6 +536,21 @@ input, select { font-family: inherit; }
 .about-card a:hover { color: var(--accent-hover); text-decoration: underline; }
 .about-strong { color: var(--text); display: block; margin-bottom: 10px; font-size: 16px; }
 
+/* ---------- Load more (incremental team rendering) ---------- */
+.load-more {
+  display: block;
+  margin: 20px auto 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 12px 28px;
+  border-radius: 100px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.load-more:hover { background: var(--bg-hover); border-color: var(--accent); }
+
 /* ---------- Browse by league (homepage internal links) ---------- */
 .browse-leagues {
   margin: 56px 0 8px;

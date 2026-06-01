@@ -102,14 +102,25 @@ export const api = {
   // Reference data — loaded once per session, then cached.
   async getTeams() {
     if (cache.teams) return cache.teams;
-    const { data, error } = await supabase
-      .from('teams')
-      .select('id, name, short_name, color, city, league_id, leagues!inner(name, confederation, country_code, countries!inner(name))')
-      .eq('active', true)
-      .order('name');
-    if (error) throw err(error.message, error.code);
+    // PostgREST caps each response at 1000 rows, so page through with .range()
+    // until a short page comes back. We have >1800 clubs.
+    const PAGE = 1000;
+    let from = 0;
+    let rows = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, short_name, color, city, league_id, leagues!inner(name, confederation, country_code, countries!inner(name))')
+        .eq('active', true)
+        .order('name')
+        .range(from, from + PAGE - 1);
+      if (error) throw err(error.message, error.code);
+      rows = rows.concat(data || []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
     // Flatten the join shape into something simple
-    cache.teams = (data || []).map(t => ({
+    cache.teams = rows.map(t => ({
       id: t.id,
       name: t.name,
       short_name: t.short_name,
