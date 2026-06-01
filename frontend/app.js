@@ -313,8 +313,11 @@ function renderTeams() {
 
   // Render incrementally: only the first `renderLimit` cards are in the DOM,
   // keeping first paint cheap even with thousands of teams. "Load more" grows it.
+  // EXCEPTION: when the user is actively searching, show ALL matches — a search
+  // result must never be hidden behind "Load more" (the whole point is to find it).
   if (state.renderLimit <= 0) state.renderLimit = PAGE_SIZE;
-  const shown = Math.min(state.renderLimit, list.length);
+  const searching = state.searchQuery.trim().length > 0;
+  const shown = searching ? list.length : Math.min(state.renderLimit, list.length);
   const capped = list.slice(0, shown);
   grid.innerHTML = capped.map(t => {
     const isMyVote = !canVote && t.id === myLastId;
