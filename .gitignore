@@ -18,3 +18,7 @@ node_modules/
 # NOTE: frontend/env.js is intentionally committed.
 # It contains only public Supabase anon keys (writes are protected by
 # Row Level Security), and the static deploy needs it at runtime.
+
+# Batch working files for tools/build-batch.ps1 + merge-batch.ps1
+data/_batch.json
+data/_input.txt

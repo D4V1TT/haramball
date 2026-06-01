@@ -189,6 +189,7 @@
 
     <div class="teams-meta" id="teams-meta" aria-live="polite"></div>
     <div class="teams-grid" id="teams-grid" role="list"></div>
+    <button class="load-more hidden" id="teams-more" type="button"></button>
     <div class="teams-empty hidden" id="teams-empty">No teams match your search.</div>
 
     <!-- Browse by league: crawlable internal links to every league page.
@@ -198,34 +199,56 @@
       <p class="browse-sub">Every top-flight league, every club. Pick a league to see who's serving the worst football.</p>
       <!-- LEAGUE-INDEX:START -->
 <ul class="league-index">
+<li><a href="/league/a-lyga"><span>A Lyga</span> <span class="li-country">Lithuania</span></a></li>
 <li><a href="/league/algerian-ligue-professionnelle-1"><span>Algerian Ligue Professionnelle 1</span> <span class="li-country">Algeria</span></a></li>
 <li><a href="/league/angolan-girabola"><span>Angolan Girabola</span> <span class="li-country">Angola</span></a></li>
 <li><a href="/league/argentine-primera-division"><span>Argentine Primera División</span> <span class="li-country">Argentina</span></a></li>
+<li><a href="/league/armenian-premier-league"><span>Armenian Premier League</span> <span class="li-country">Armenia</span></a></li>
 <li><a href="/league/australian-a-league"><span>Australian A-League</span> <span class="li-country">Australia</span></a></li>
 <li><a href="/league/austrian-bundesliga"><span>Austrian Bundesliga</span> <span class="li-country">Austria</span></a></li>
+<li><a href="/league/azerbaijan-premier-league"><span>Azerbaijan Premier League</span> <span class="li-country">Azerbaijan</span></a></li>
+<li><a href="/league/bahraini-premier-league"><span>Bahraini Premier League</span> <span class="li-country">Bahrain</span></a></li>
+<li><a href="/league/bangladesh-premier-league"><span>Bangladesh Premier League</span> <span class="li-country">Bangladesh</span></a></li>
+<li><a href="/league/belarusian-premier-league"><span>Belarusian Premier League</span> <span class="li-country">Belarus</span></a></li>
 <li><a href="/league/belgian-pro-league"><span>Belgian Pro League</span> <span class="li-country">Belgium</span></a></li>
+<li><a href="/league/bermudian-premier-division"><span>Bermudian Premier Division</span> <span class="li-country">Bermuda</span></a></li>
+<li><a href="/league/besta-deild-karla"><span>Besta deild karla</span> <span class="li-country">Iceland</span></a></li>
 <li><a href="/league/bolivian-division-profesional"><span>Bolivian División Profesional</span> <span class="li-country">Bolivia</span></a></li>
+<li><a href="/league/bosnian-premier-league"><span>Bosnian Premier League</span> <span class="li-country">Bosnia and Herzegovina</span></a></li>
+<li><a href="/league/botswana-premier-league"><span>Botswana Premier League</span> <span class="li-country">Botswana</span></a></li>
 <li><a href="/league/brasileirao-serie-a"><span>Brasileirão Série A</span> <span class="li-country">Brazil</span></a></li>
 <li><a href="/league/bulgarian-first-league"><span>Bulgarian First League</span> <span class="li-country">Bulgaria</span></a></li>
 <li><a href="/league/bundesliga"><span>Bundesliga</span> <span class="li-country">Germany</span></a></li>
+<li><a href="/league/burkinabe-premier-league"><span>Burkinabé Premier League</span> <span class="li-country">Burkina Faso</span></a></li>
+<li><a href="/league/cambodian-premier-league"><span>Cambodian Premier League</span> <span class="li-country">Cambodia</span></a></li>
+<li><a href="/league/campionato-sammarinese"><span>Campionato Sammarinese</span> <span class="li-country">San Marino</span></a></li>
 <li><a href="/league/canadian-premier-league"><span>Canadian Premier League</span> <span class="li-country">Canada</span></a></li>
 <li><a href="/league/chilean-primera-division"><span>Chilean Primera División</span> <span class="li-country">Chile</span></a></li>
 <li><a href="/league/chinese-super-league"><span>Chinese Super League</span> <span class="li-country">China</span></a></li>
 <li><a href="/league/colombian-categoria-primera-a"><span>Colombian Categoría Primera A</span> <span class="li-country">Colombia</span></a></li>
 <li><a href="/league/costa-rican-primera-division"><span>Costa Rican Primera División</span> <span class="li-country">Costa Rica</span></a></li>
 <li><a href="/league/croatian-hnl"><span>Croatian HNL</span> <span class="li-country">Croatia</span></a></li>
+<li><a href="/league/cuban-campeonato-nacional"><span>Cuban Campeonato Nacional</span> <span class="li-country">Cuba</span></a></li>
 <li><a href="/league/cypriot-first-division"><span>Cypriot First Division</span> <span class="li-country">Cyprus</span></a></li>
 <li><a href="/league/czech-first-league"><span>Czech First League</span> <span class="li-country">Czech Republic</span></a></li>
 <li><a href="/league/danish-superliga"><span>Danish Superliga</span> <span class="li-country">Denmark</span></a></li>
+<li><a href="/league/dhivehi-premier-league"><span>Dhivehi Premier League</span> <span class="li-country">Maldives</span></a></li>
 <li><a href="/league/dr-congo-linafoot"><span>DR Congo Linafoot</span> <span class="li-country">DR Congo</span></a></li>
 <li><a href="/league/ecuadorian-serie-a"><span>Ecuadorian Serie A</span> <span class="li-country">Ecuador</span></a></li>
 <li><a href="/league/egyptian-premier-league"><span>Egyptian Premier League</span> <span class="li-country">Egypt</span></a></li>
+<li><a href="/league/elite-one"><span>Elite One</span> <span class="li-country">Cameroon</span></a></li>
 <li><a href="/league/eredivisie"><span>Eredivisie</span> <span class="li-country">Netherlands</span></a></li>
 <li><a href="/league/ethiopian-premier-league"><span>Ethiopian Premier League</span> <span class="li-country">Ethiopia</span></a></li>
+<li><a href="/league/faroese-premier-league"><span>Faroese Premier League</span> <span class="li-country">Faroe Islands</span></a></li>
+<li><a href="/league/fiji-premier-league"><span>Fiji Premier League</span> <span class="li-country">Fiji</span></a></li>
 <li><a href="/league/finnish-veikkausliiga"><span>Finnish Veikkausliiga</span> <span class="li-country">Finland</span></a></li>
 <li><a href="/league/georgian-erovnuli-liga"><span>Georgian Erovnuli Liga</span> <span class="li-country">Georgia</span></a></li>
+<li><a href="/league/gff-elite-league"><span>GFF Elite League</span> <span class="li-country">Guyana</span></a></li>
 <li><a href="/league/ghanaian-premier-league"><span>Ghanaian Premier League</span> <span class="li-country">Ghana</span></a></li>
+<li><a href="/league/gibraltar-football-league"><span>Gibraltar Football League</span> <span class="li-country">Gibraltar</span></a></li>
 <li><a href="/league/greek-super-league"><span>Greek Super League</span> <span class="li-country">Greece</span></a></li>
+<li><a href="/league/guatemalan-liga-nacional"><span>Guatemalan Liga Nacional</span> <span class="li-country">Guatemala</span></a></li>
+<li><a href="/league/honduran-liga-nacional"><span>Honduran Liga Nacional</span> <span class="li-country">Honduras</span></a></li>
 <li><a href="/league/hong-kong-premier-league"><span>Hong Kong Premier League</span> <span class="li-country">Hong Kong</span></a></li>
 <li><a href="/league/hungarian-nb-i"><span>Hungarian NB I</span> <span class="li-country">Hungary</span></a></li>
 <li><a href="/league/indian-super-league"><span>Indian Super League</span> <span class="li-country">India</span></a></li>
@@ -236,26 +259,57 @@
 <li><a href="/league/israeli-premier-league"><span>Israeli Premier League</span> <span class="li-country">Israel</span></a></li>
 <li><a href="/league/ivorian-ligue-1"><span>Ivorian Ligue 1</span> <span class="li-country">Ivory Coast</span></a></li>
 <li><a href="/league/j1-league"><span>J1 League</span> <span class="li-country">Japan</span></a></li>
+<li><a href="/league/jamaica-premier-league"><span>Jamaica Premier League</span> <span class="li-country">Jamaica</span></a></li>
+<li><a href="/league/jordanian-pro-league"><span>Jordanian Pro League</span> <span class="li-country">Jordan</span></a></li>
 <li><a href="/league/k-league-1"><span>K League 1</span> <span class="li-country">South Korea</span></a></li>
+<li><a href="/league/kategoria-superiore"><span>Kategoria Superiore</span> <span class="li-country">Albania</span></a></li>
+<li><a href="/league/kazakhstan-premier-league"><span>Kazakhstan Premier League</span> <span class="li-country">Kazakhstan</span></a></li>
 <li><a href="/league/kenyan-premier-league"><span>Kenyan Premier League</span> <span class="li-country">Kenya</span></a></li>
+<li><a href="/league/kosovo-superleague"><span>Kosovo Superleague</span> <span class="li-country">Kosovo</span></a></li>
+<li><a href="/league/kuwait-premier-league"><span>Kuwait Premier League</span> <span class="li-country">Kuwait</span></a></li>
 <li><a href="/league/la-liga"><span>La Liga</span> <span class="li-country">Spain</span></a></li>
+<li><a href="/league/latvian-higher-league"><span>Latvian Higher League</span> <span class="li-country">Latvia</span></a></li>
+<li><a href="/league/lebanese-premier-league"><span>Lebanese Premier League</span> <span class="li-country">Lebanon</span></a></li>
+<li><a href="/league/libyan-premier-league"><span>Libyan Premier League</span> <span class="li-country">Libya</span></a></li>
+<li><a href="/league/liga-dominicana-de-futbol"><span>Liga Dominicana de Fútbol</span> <span class="li-country">Dominican Republic</span></a></li>
 <li><a href="/league/liga-mx"><span>Liga MX</span> <span class="li-country">Mexico</span></a></li>
+<li><a href="/league/liga-panamena-de-futbol"><span>Liga Panameña de Fútbol</span> <span class="li-country">Panama</span></a></li>
 <li><a href="/league/ligue-1"><span>Ligue 1</span> <span class="li-country">France</span></a></li>
+<li><a href="/league/ligue-haitienne"><span>Ligue Haïtienne</span> <span class="li-country">Haiti</span></a></li>
+<li><a href="/league/luxembourg-national-division"><span>Luxembourg National Division</span> <span class="li-country">Luxembourg</span></a></li>
+<li><a href="/league/macedonian-first-football-league"><span>Macedonian First Football League</span> <span class="li-country">North Macedonia</span></a></li>
+<li><a href="/league/malagasy-pro-league"><span>Malagasy Pro League</span> <span class="li-country">Madagascar</span></a></li>
 <li><a href="/league/malaysia-super-league"><span>Malaysia Super League</span> <span class="li-country">Malaysia</span></a></li>
+<li><a href="/league/malian-premiere-division"><span>Malian Première Division</span> <span class="li-country">Mali</span></a></li>
+<li><a href="/league/maltese-premier-league"><span>Maltese Premier League</span> <span class="li-country">Malta</span></a></li>
+<li><a href="/league/meistriliiga"><span>Meistriliiga</span> <span class="li-country">Estonia</span></a></li>
 <li><a href="/league/mls"><span>MLS</span> <span class="li-country">United States</span></a></li>
+<li><a href="/league/mocambola"><span>Moçambola</span> <span class="li-country">Mozambique</span></a></li>
+<li><a href="/league/moldovan-super-liga"><span>Moldovan Super Liga</span> <span class="li-country">Moldova</span></a></li>
+<li><a href="/league/mongolian-premier-league"><span>Mongolian Premier League</span> <span class="li-country">Mongolia</span></a></li>
+<li><a href="/league/montenegrin-first-league"><span>Montenegrin First League</span> <span class="li-country">Montenegro</span></a></li>
 <li><a href="/league/moroccan-botola-pro"><span>Moroccan Botola Pro</span> <span class="li-country">Morocco</span></a></li>
+<li><a href="/league/myanmar-national-league"><span>Myanmar National League</span> <span class="li-country">Myanmar</span></a></li>
+<li><a href="/league/nepal-super-league"><span>Nepal Super League</span> <span class="li-country">Nepal</span></a></li>
 <li><a href="/league/new-zealand-national-league"><span>New Zealand National League</span> <span class="li-country">New Zealand</span></a></li>
+<li><a href="/league/nicaraguan-primera-division"><span>Nicaraguan Primera División</span> <span class="li-country">Nicaragua</span></a></li>
+<li><a href="/league/nifl-premiership"><span>NIFL Premiership</span> <span class="li-country">Northern Ireland</span></a></li>
 <li><a href="/league/nigerian-premier-football-league"><span>Nigerian Premier Football League</span> <span class="li-country">Nigeria</span></a></li>
 <li><a href="/league/norwegian-eliteserien"><span>Norwegian Eliteserien</span> <span class="li-country">Norway</span></a></li>
+<li><a href="/league/oman-professional-league"><span>Oman Professional League</span> <span class="li-country">Oman</span></a></li>
 <li><a href="/league/paraguayan-primera-division"><span>Paraguayan Primera División</span> <span class="li-country">Paraguay</span></a></li>
 <li><a href="/league/peruvian-liga-1"><span>Peruvian Liga 1</span> <span class="li-country">Peru</span></a></li>
 <li><a href="/league/philippines-football-league"><span>Philippines Football League</span> <span class="li-country">Philippines</span></a></li>
 <li><a href="/league/polish-ekstraklasa"><span>Polish Ekstraklasa</span> <span class="li-country">Poland</span></a></li>
 <li><a href="/league/premier-league"><span>Premier League</span> <span class="li-country">England</span></a></li>
+<li><a href="/league/premier-league-of-belize"><span>Premier League of Belize</span> <span class="li-country">Belize</span></a></li>
 <li><a href="/league/primeira-liga"><span>Primeira Liga</span> <span class="li-country">Portugal</span></a></li>
+<li><a href="/league/primera-divisio"><span>Primera Divisió</span> <span class="li-country">Andorra</span></a></li>
 <li><a href="/league/qatar-stars-league"><span>Qatar Stars League</span> <span class="li-country">Qatar</span></a></li>
 <li><a href="/league/romanian-liga-i"><span>Romanian Liga I</span> <span class="li-country">Romania</span></a></li>
 <li><a href="/league/russian-premier-league"><span>Russian Premier League</span> <span class="li-country">Russia</span></a></li>
+<li><a href="/league/rwanda-national-football-league"><span>Rwanda National Football League</span> <span class="li-country">Rwanda</span></a></li>
+<li><a href="/league/salvadoran-primera-division"><span>Salvadoran Primera División</span> <span class="li-country">El Salvador</span></a></li>
 <li><a href="/league/saudi-pro-league"><span>Saudi Pro League</span> <span class="li-country">Saudi Arabia</span></a></li>
 <li><a href="/league/scottish-premiership"><span>Scottish Premiership</span> <span class="li-country">Scotland</span></a></li>
 <li><a href="/league/senegalese-premier-league"><span>Senegalese Premier League</span> <span class="li-country">Senegal</span></a></li>
@@ -264,14 +318,22 @@
 <li><a href="/league/singapore-premier-league"><span>Singapore Premier League</span> <span class="li-country">Singapore</span></a></li>
 <li><a href="/league/slovak-super-liga"><span>Slovak Super Liga</span> <span class="li-country">Slovakia</span></a></li>
 <li><a href="/league/slovenian-prvaliga"><span>Slovenian PrvaLiga</span> <span class="li-country">Slovenia</span></a></li>
+<li><a href="/league/solomon-islands-s-league"><span>Solomon Islands S-League</span> <span class="li-country">Solomon Islands</span></a></li>
 <li><a href="/league/south-african-premier-division"><span>South African Premier Division</span> <span class="li-country">South Africa</span></a></li>
 <li><a href="/league/sudanese-premier-league"><span>Sudanese Premier League</span> <span class="li-country">Sudan</span></a></li>
+<li><a href="/league/super-league-of-malawi"><span>Super League of Malawi</span> <span class="li-country">Malawi</span></a></li>
 <li><a href="/league/super-lig"><span>Süper Lig</span> <span class="li-country">Turkey</span></a></li>
+<li><a href="/league/surinamese-eerste-divisie"><span>Surinamese Eerste Divisie</span> <span class="li-country">Suriname</span></a></li>
 <li><a href="/league/swedish-allsvenskan"><span>Swedish Allsvenskan</span> <span class="li-country">Sweden</span></a></li>
 <li><a href="/league/swiss-super-league"><span>Swiss Super League</span> <span class="li-country">Switzerland</span></a></li>
+<li><a href="/league/syrian-premier-league"><span>Syrian Premier League</span> <span class="li-country">Syria</span></a></li>
+<li><a href="/league/tahiti-ligue-1"><span>Tahiti Ligue 1</span> <span class="li-country">Tahiti</span></a></li>
+<li><a href="/league/tajikistan-higher-league"><span>Tajikistan Higher League</span> <span class="li-country">Tajikistan</span></a></li>
 <li><a href="/league/tanzanian-premier-league"><span>Tanzanian Premier League</span> <span class="li-country">Tanzania</span></a></li>
 <li><a href="/league/thai-league-1"><span>Thai League 1</span> <span class="li-country">Thailand</span></a></li>
+<li><a href="/league/tt-premier-league"><span>TT Premier League</span> <span class="li-country">Trinidad and Tobago</span></a></li>
 <li><a href="/league/tunisian-ligue-professionnelle-1"><span>Tunisian Ligue Professionnelle 1</span> <span class="li-country">Tunisia</span></a></li>
+<li><a href="/league/turkmenistan-yokary-liga"><span>Turkmenistan Ýokary Liga</span> <span class="li-country">Turkmenistan</span></a></li>
 <li><a href="/league/uae-pro-league"><span>UAE Pro League</span> <span class="li-country">United Arab Emirates</span></a></li>
 <li><a href="/league/ukrainian-premier-league"><span>Ukrainian Premier League</span> <span class="li-country">Ukraine</span></a></li>
 <li><a href="/league/uruguayan-primera-division"><span>Uruguayan Primera División</span> <span class="li-country">Uruguay</span></a></li>
@@ -280,6 +342,7 @@
 <li><a href="/league/venezuelan-primera-division"><span>Venezuelan Primera División</span> <span class="li-country">Venezuela</span></a></li>
 <li><a href="/league/welsh-cymru-premier"><span>Welsh Cymru Premier</span> <span class="li-country">Wales</span></a></li>
 <li><a href="/league/zambian-super-league"><span>Zambian Super League</span> <span class="li-country">Zambia</span></a></li>
+<li><a href="/league/zimbabwe-premier-soccer-league"><span>Zimbabwe Premier Soccer League</span> <span class="li-country">Zimbabwe</span></a></li>
 </ul>
 <!-- LEAGUE-INDEX:END -->
     </section>
