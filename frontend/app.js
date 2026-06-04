@@ -515,67 +515,163 @@ function reasonLabelFor(code) {
 function shareUrlFor(team, isCountry) {
   return `${SITE_URL}/${isCountry ? 'country' : 'team'}/${team.id}`;
 }
+function ordinal(n) {
+  n = Number(n);
+  if (!Number.isFinite(n)) return '';
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+// Live all-time rank for the verdict card. Returns { rank, total } or null.
+async function fetchVerdictRank(team, isCountry) {
+  try {
+    const s = isCountry ? await api.getCountryStats(team.id) : await api.getTeamStats(team.id);
+    if (s && s.rank_all) {
+      return { rank: Number(s.rank_all), total: Number(s.total_ranked || s.total_teams_ranked || 0) };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
-// Draw a 1200x630 verdict card on a canvas and return a PNG blob.
-function buildVerdictCard(team, reasonLabel) {
+// ---- canvas helpers ----
+function rrect(x, cx, cy, w, h, r) {
+  if (x.roundRect) { x.beginPath(); x.roundRect(cx, cy, w, h, r); return; }
+  x.beginPath();
+  x.moveTo(cx + r, cy);
+  x.arcTo(cx + w, cy, cx + w, cy + h, r);
+  x.arcTo(cx + w, cy + h, cx, cy + h, r);
+  x.arcTo(cx, cy + h, cx, cy, r);
+  x.arcTo(cx, cy, cx + w, cy, r);
+  x.closePath();
+}
+// The haramball ball mark (matches the site logo, simplified).
+function drawBallMark(x, cx, cy, r) {
+  x.save();
+  x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fillStyle = '#d63031'; x.fill();
+  const bw = r * 0.22, bh = r * 1.24;
+  x.fillStyle = '#fff';
+  x.fillRect(cx - r * 0.52 - bw / 2, cy - bh / 2, bw, bh);
+  x.fillRect(cx + r * 0.52 - bw / 2, cy - bh / 2, bw, bh);
+  x.beginPath(); x.arc(cx, cy, r * 0.28, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill();
+  x.beginPath(); x.arc(cx, cy, r * 0.28, 0, Math.PI * 2);
+  x.strokeStyle = '#0a0a0a'; x.lineWidth = r * 0.03; x.stroke();
+  x.restore();
+}
+
+// Draw a polished 1200x630 verdict card and return a PNG blob.
+function buildVerdictCard(team, reasonLabel, rank) {
   return new Promise(resolve => {
     const W = 1200, H = 630;
+    const accent = team.color || '#d63031';
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
     const x = c.getContext('2d');
-    // Team-colour background + dark overlay for legibility.
-    x.fillStyle = team.color || '#0a0a0a';
-    x.fillRect(0, 0, W, H);
-    x.fillStyle = 'rgba(10,10,10,0.62)';
-    x.fillRect(0, 0, W, H);
-    x.fillStyle = 'rgba(214,48,49,0.18)';
-    x.fillRect(0, H - 14, W, 14);
 
-    x.textBaseline = 'top';
-    x.fillStyle = '#d63031';
-    x.font = '700 30px Arial, sans-serif';
-    x.fillText('⚖  THE HARAMBALL COURT', 70, 70);
+    // Background: near-black with a soft team-colour glow top-right.
+    x.fillStyle = '#0c0c0c'; x.fillRect(0, 0, W, H);
+    const g = x.createRadialGradient(W - 180, 120, 40, W - 180, 120, 720);
+    g.addColorStop(0, accent + '33'); g.addColorStop(1, 'transparent');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    // Left accent stripe + bottom rule.
+    x.fillStyle = accent; x.fillRect(0, 0, 14, H);
+    x.fillStyle = '#1c1c1c'; x.fillRect(70, H - 96, W - 140, 2);
 
-    // Team name (wrap to 2 lines).
-    x.fillStyle = '#ffffff';
+    // Header: ball mark + wordmark.
+    drawBallMark(x, 92, 84, 26);
+    x.textBaseline = 'middle'; x.textAlign = 'left';
+    x.fillStyle = '#e8e8e8'; x.font = '800 30px Arial, sans-serif';
+    if ('letterSpacing' in x) x.letterSpacing = '3px';
+    x.fillText('THE HARAMBALL COURT', 132, 86);
+    if ('letterSpacing' in x) x.letterSpacing = '0px';
+
+    // Team badge (circle with initials).
+    const bcx = 150, bcy = 320, br = 84;
+    x.beginPath(); x.arc(bcx, bcy, br, 0, Math.PI * 2); x.fillStyle = accent; x.fill();
+    x.lineWidth = 3; x.strokeStyle = 'rgba(255,255,255,0.18)'; x.stroke();
+    x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = '800 58px Arial, sans-serif';
+    x.fillText(getInitials(team.name), bcx, bcy + 2);
+
+    // Right-hand text block (name wraps to <=2 lines), vertically centred.
+    x.textAlign = 'left';
+    const bx = 270, maxW = W - bx - 70;
     const name = String(team.name).toUpperCase();
-    let size = name.length > 22 ? 76 : 96;
+    let size = name.length > 18 ? 70 : 86;
     x.font = `800 ${size}px Arial, sans-serif`;
     const words = name.split(' ');
     let line = '', lines = [];
     for (const w of words) {
-      const test = line ? line + ' ' + w : w;
-      if (x.measureText(test).width > W - 140 && line) { lines.push(line); line = w; }
-      else line = test;
+      const t = line ? line + ' ' + w : w;
+      if (x.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t;
     }
     if (line) lines.push(line);
     lines = lines.slice(0, 2);
-    let y = 200;
-    for (const ln of lines) { x.fillText(ln, 70, y); y += size + 8; }
+    const rankText = (rank && rank.rank)
+      ? `${ordinal(rank.rank)} worst${rank.total ? ' of ' + rank.total.toLocaleString() : ''}`
+      : '';
+    const nameLH = size * 1.04;
+    const blockH = lines.length * nameLH + 14 + 46 + (rankText ? 40 : 0) + (reasonLabel ? 52 : 0);
+    let y = 200 + (270 - blockH) / 2; if (y < 170) y = 170;
 
-    x.fillStyle = '#f1c40f';
-    x.font = '700 40px Arial, sans-serif';
-    x.fillText('VERDICT: GUILTY OF HARAMBALL', 70, y + 14);
+    x.fillStyle = '#ffffff';
+    x.textBaseline = 'top';
+    for (const ln of lines) { x.fillText(ln, bx, y); y += nameLH; }
 
-    if (reasonLabel) {
-      x.fillStyle = '#e5e5e5';
-      x.font = '400 34px Arial, sans-serif';
-      x.fillText('Aggravated by: ' + reasonLabel, 70, y + 74);
+    y += 14;
+    x.fillStyle = accent === '#d63031' ? '#ff5a5b' : '#d63031';
+    x.font = '800 38px Arial, sans-serif';
+    x.fillText('GUILTY OF HARAMBALL', bx, y);
+    y += 46;
+
+    if (rankText) {
+      x.fillStyle = '#f1c40f';
+      x.font = '800 30px Arial, sans-serif';
+      x.fillText('🔥 ' + rankText.toUpperCase(), bx, y);
+      y += 40;
     }
 
-    x.fillStyle = '#a0a0a0';
-    x.font = '700 30px Arial, sans-serif';
-    x.fillText('haramball.com · vote the worst football of the week', 70, H - 70);
+    if (reasonLabel) {
+      const label = reasonLabel.toUpperCase();
+      x.font = '700 26px Arial, sans-serif';
+      const tw = x.measureText(label).width;
+      rrect(x, bx, y, tw + 36, 44, 22);
+      x.fillStyle = 'rgba(255,255,255,0.08)'; x.fill();
+      x.lineWidth = 1.5; x.strokeStyle = 'rgba(255,255,255,0.18)'; x.stroke();
+      x.fillStyle = '#f1c40f'; x.textBaseline = 'middle';
+      x.fillText(label, bx + 18, y + 24);
+      x.textBaseline = 'top';
+    }
+
+    // Tilted "GUILTY" stamp, top-right.
+    x.save();
+    x.translate(1000, 150); x.rotate(-13 * Math.PI / 180);
+    x.lineWidth = 5; x.strokeStyle = 'rgba(214,48,49,0.85)';
+    rrect(x, -140, -60, 280, 120, 14); x.stroke();
+    x.fillStyle = 'rgba(214,48,49,0.92)';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = '900 60px Arial, sans-serif'; x.fillText('GUILTY', 0, -10);
+    x.font = '700 20px Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '2px';
+    x.fillText('VERDICT FILED', 0, 34);
+    if ('letterSpacing' in x) x.letterSpacing = '0px';
+    x.restore();
+
+    // Footer watermark.
+    x.textAlign = 'left'; x.textBaseline = 'middle';
+    x.fillStyle = '#8a8a8a'; x.font = '700 26px Arial, sans-serif';
+    x.fillText('haramball.com', 70, H - 56);
+    const wmW = x.measureText('haramball.com').width;  // measure with the bold font
+    x.fillStyle = '#5a5a5a'; x.font = '400 24px Arial, sans-serif';
+    x.fillText('  ·  vote the worst football of the week', 70 + wmW, H - 56);
 
     c.toBlob(b => resolve(b), 'image/png');
   });
 }
 
 async function shareVerdict(team, reasonLabel, isCountry) {
-  const text = `I filed against ${team.name} at the haramball court${reasonLabel ? '. ' + reasonLabel : ''}. Vote at haramball.com`;
-  track('share_verdict', { team_id: team.id, mode: isCountry ? 'countries' : 'clubs' });
+  const rank = await fetchVerdictRank(team, isCountry);
+  const rankPhrase = (rank && rank.rank) ? ` Currently ${ordinal(rank.rank)} worst${rank.total ? ' of ' + rank.total.toLocaleString() : ''}.` : '';
+  const text = `I filed against ${team.name} at the haramball court${reasonLabel ? '. ' + reasonLabel : ''}.${rankPhrase} Vote at haramball.com`;
+  track('share_verdict', { team_id: team.id, mode: isCountry ? 'countries' : 'clubs', rank: rank ? rank.rank : null });
   let blob;
-  try { blob = await buildVerdictCard(team, reasonLabel); } catch { blob = null; }
+  try { blob = await buildVerdictCard(team, reasonLabel, rank); } catch { blob = null; }
   const file = blob ? new File([blob], `haramball-${team.id}.png`, { type: 'image/png' }) : null;
   try {
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
