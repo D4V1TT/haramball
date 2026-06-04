@@ -434,7 +434,11 @@ function openVoteModal(teamId) {
   $('char-count').textContent = '0';
   // Vote button is always enabled — reason is optional
   $('vote-submit').disabled = false;
+  $('vote-submit').textContent = 'Cast vote';
   $('modal-error').classList.add('hidden');
+  // Ensure we show the form (not a leftover success panel from a prior vote).
+  $('vote-form').classList.remove('hidden');
+  $('vote-success').classList.add('hidden');
 
   const m = $('vote-modal');
   m.classList.remove('hidden');
@@ -480,8 +484,8 @@ async function submitVote() {
       reason: state.selectedReason || 'none',
       has_comment: hasComment
     });
-    closeVoteModal();
-    showToast(`Vote registered for ${state.selectedTeam.name}`);
+    // Swap the modal into the "verdict filed" share/follow state.
+    showVoteSuccess(state.selectedTeam, state.selectedReason);
     await Promise.all([refreshVotedToday(), loadGlobalStats(), loadTopPreview()]);
     renderTeams();
   } catch (e) {
@@ -498,6 +502,123 @@ async function submitVote() {
     errEl.classList.remove('hidden');
     btn.disabled = false; btn.textContent = 'Cast vote';
   }
+}
+
+// ---------- Post-vote share / follow ----------
+const SITE_URL = 'https://haramball.com';
+
+function reasonLabelFor(code) {
+  if (!code) return '';
+  const r = state.reasons.find(x => x.code === code);
+  return r ? r.label : '';
+}
+function shareUrlFor(team, isCountry) {
+  return `${SITE_URL}/${isCountry ? 'country' : 'team'}/${team.id}`;
+}
+
+// Draw a 1200x630 verdict card on a canvas and return a PNG blob.
+function buildVerdictCard(team, reasonLabel) {
+  return new Promise(resolve => {
+    const W = 1200, H = 630;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    // Team-colour background + dark overlay for legibility.
+    x.fillStyle = team.color || '#0a0a0a';
+    x.fillRect(0, 0, W, H);
+    x.fillStyle = 'rgba(10,10,10,0.62)';
+    x.fillRect(0, 0, W, H);
+    x.fillStyle = 'rgba(214,48,49,0.18)';
+    x.fillRect(0, H - 14, W, 14);
+
+    x.textBaseline = 'top';
+    x.fillStyle = '#d63031';
+    x.font = '700 30px Arial, sans-serif';
+    x.fillText('⚖  THE HARAMBALL COURT', 70, 70);
+
+    // Team name (wrap to 2 lines).
+    x.fillStyle = '#ffffff';
+    const name = String(team.name).toUpperCase();
+    let size = name.length > 22 ? 76 : 96;
+    x.font = `800 ${size}px Arial, sans-serif`;
+    const words = name.split(' ');
+    let line = '', lines = [];
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (x.measureText(test).width > W - 140 && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    lines = lines.slice(0, 2);
+    let y = 200;
+    for (const ln of lines) { x.fillText(ln, 70, y); y += size + 8; }
+
+    x.fillStyle = '#f1c40f';
+    x.font = '700 40px Arial, sans-serif';
+    x.fillText('VERDICT: GUILTY OF HARAMBALL', 70, y + 14);
+
+    if (reasonLabel) {
+      x.fillStyle = '#e5e5e5';
+      x.font = '400 34px Arial, sans-serif';
+      x.fillText('Aggravated by: ' + reasonLabel, 70, y + 74);
+    }
+
+    x.fillStyle = '#a0a0a0';
+    x.font = '700 30px Arial, sans-serif';
+    x.fillText('haramball.com · vote the worst football of the week', 70, H - 70);
+
+    c.toBlob(b => resolve(b), 'image/png');
+  });
+}
+
+async function shareVerdict(team, reasonLabel, isCountry) {
+  const text = `I filed against ${team.name} at the haramball court${reasonLabel ? '. ' + reasonLabel : ''}. Vote at haramball.com`;
+  track('share_verdict', { team_id: team.id, mode: isCountry ? 'countries' : 'clubs' });
+  let blob;
+  try { blob = await buildVerdictCard(team, reasonLabel); } catch { blob = null; }
+  const file = blob ? new File([blob], `haramball-${team.id}.png`, { type: 'image/png' }) : null;
+  try {
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text, title: 'Haramball verdict' });
+      return;
+    }
+    if (navigator.share) { await navigator.share({ text, url: shareUrlFor(team, isCountry) }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  // Fallback: download the image + copy the caption.
+  if (blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `haramball-${team.id}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  try { await navigator.clipboard.writeText(text); showToast('Verdict image saved + caption copied'); }
+  catch { showToast('Verdict image saved'); }
+}
+
+async function recruitWitness(team, isCountry) {
+  const url = shareUrlFor(team, isCountry);
+  const text = `The haramball court has ${team.name} on the docket. File your verdict:`;
+  track('recruit_witness', { team_id: team.id, mode: isCountry ? 'countries' : 'clubs' });
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Haramball', text, url }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); showToast('Link copied — send it to a friend who hates them'); }
+  catch { showToast(url); }
+}
+
+function showVoteSuccess(team, reasonCode) {
+  const isCountry = state.selectedIsCountry;
+  const reasonLabel = reasonLabelFor(reasonCode);
+  $('vote-form').classList.add('hidden');
+  const panel = $('vote-success');
+  panel.classList.remove('hidden');
+  $('vote-success-title').textContent = `Verdict filed against ${team.name}.`;
+  $('vote-success-sub').textContent = reasonLabel
+    ? `Logged: ${reasonLabel}. Spread the word.`
+    : 'One vote per day — come back tomorrow. Spread the word.';
+  $('share-verdict').onclick = () => shareVerdict(team, reasonLabel, isCountry);
+  $('share-witness').onclick = () => recruitWitness(team, isCountry);
 }
 
 // ---------- Leaderboard ----------
@@ -769,6 +890,7 @@ async function init() {
     $('char-count').textContent = e.target.value.length;
   });
   $('vote-submit').addEventListener('click', submitVote);
+  $('vote-success-done').addEventListener('click', closeVoteModal);
 
   // Country list loads independently — if the national_teams table isn't
   // seeded yet, clubs still work and the Countries tab is simply empty.

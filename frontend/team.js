@@ -120,9 +120,28 @@ function wireVoteButton() {
   });
 }
 
+// "Recruit a witness" — Web Share API with clipboard fallback.
+function wireShareButton() {
+  const url = location.href;
+  const text = `The haramball court has ${teamName} on the docket. File your verdict:`;
+  document.querySelectorAll('[data-share-link]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        if (navigator.share) { await navigator.share({ title: 'Haramball', text, url }); return; }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+      try {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+        btn.textContent = '✓ Link copied — send it';
+        setTimeout(() => { btn.innerHTML = '📣 Recruit a witness'; }, 2500);
+      } catch { /* no-op */ }
+    });
+  });
+}
+
 function init() {
   if (!teamId) return;
   wireVoteButton();
+  wireShareButton();
   // Fire all three in parallel; each handles its own failure.
   hydrateStats();
   hydrateReasons();

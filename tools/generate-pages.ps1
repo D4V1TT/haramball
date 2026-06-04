@@ -247,6 +247,7 @@ $HEADER
 <h2>Convict $nameH</h2>
 <p>One vote per day. Pick a reason &mdash; time-wasting, diving, parking the bus &mdash; or just cast your verdict.</p>
 <a class="btn-vote" data-vote-link href="/?vote=$(Esc-Html $id)">Vote against $nameH &#9878;</a>
+<button class="btn-share" data-share-link type="button">&#128226; Recruit a witness</button>
 </div>
 
 <section class="detail-section">
@@ -484,6 +485,7 @@ $HEADER
 <h2>Convict $nameH</h2>
 <p>One country vote per day. Pick a reason &mdash; time-wasting, diving, parking the bus &mdash; or just cast your verdict.</p>
 <a class="btn-vote" data-vote-link href="/?cvote=$(Esc-Html $id)">Vote against $nameH &#9878;</a>
+<button class="btn-share" data-share-link type="button">&#128226; Recruit a witness</button>
 </div>
 
 <section class="detail-section">
