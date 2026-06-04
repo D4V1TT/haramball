@@ -536,6 +536,59 @@ input, select { font-family: inherit; }
 .about-card a:hover { color: var(--accent-hover); text-decoration: underline; }
 .about-strong { color: var(--text); display: block; margin-bottom: 10px; font-size: 16px; }
 
+/* ---------- Layout-shift (CLS) reservations ----------
+   Reserve space for regions filled by JS after the data loads, so late
+   content doesn't shove the page down (was causing CLS on hero-stats,
+   browse-leagues and the footer). */
+#hero-stats { min-height: 58px; }
+.teams-grid { min-height: 520px; }
+.filters-bar { min-height: 46px; }
+#quick-vote:empty, .quick-vote-grid:empty { min-height: 0; }
+@media (max-width: 640px) {
+  .teams-grid { min-height: 380px; }
+  #hero-stats { min-height: 48px; }
+}
+
+/* ---------- Post-vote share / follow panel ---------- */
+.vote-success { text-align: center; padding: 8px 4px 4px; }
+.vote-success-check {
+  font-size: 44px; line-height: 1;
+  width: 76px; height: 76px; margin: 4px auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-bg); border: 1px solid var(--accent-dim);
+  border-radius: 50%; color: var(--accent);
+}
+.vote-success h3 { font-size: 22px; margin: 0 0 6px; }
+.share-actions { display: flex; flex-direction: column; gap: 10px; margin: 22px 0 14px; }
+.share-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 18px; border-radius: 12px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  background: var(--bg-elev); border: 1px solid var(--border-strong); color: var(--text);
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  min-height: 48px; text-decoration: none;
+}
+.share-btn:hover { background: var(--bg-hover); border-color: var(--accent); color: var(--text); }
+.share-btn:active { transform: translateY(1px); }
+.share-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.share-btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+.share-btn--x { background: #000; border-color: #333; color: #fff; }
+.share-btn--x:hover { background: #111; border-color: #555; color: #fff; }
+.vote-success-done {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 14px; cursor: pointer; padding: 6px 12px; margin-top: 2px;
+}
+.vote-success-done:hover { color: var(--text); }
+
+/* Share buttons on team / country detail pages (recruit a witness) */
+.detail-cta .btn-share {
+  display: inline-block; margin-top: 10px;
+  background: var(--bg-elev); border: 1px solid var(--border-strong);
+  color: var(--text); padding: 11px 24px; border-radius: 100px;
+  font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.detail-cta .btn-share:hover { border-color: var(--accent); }
+
 /* ---------- Load more (incremental team rendering) ---------- */
 .load-more {
   display: block;
