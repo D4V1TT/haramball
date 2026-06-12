@@ -61,7 +61,7 @@ function track(eventName, props = {}) {
 
 // ---------- Application state ----------
 const state = {
-  mode: 'clubs',              // 'clubs' | 'countries'
+  mode: 'countries',          // 'clubs' | 'countries' (homepage defaults to countries)
   teams: [],
   countries: [],
   leagues: [],
@@ -988,23 +988,30 @@ async function init() {
   $('vote-submit').addEventListener('click', submitVote);
   $('vote-success-done').addEventListener('click', closeVoteModal);
 
-  // Country list loads independently — if the national_teams table isn't
-  // seeded yet, clubs still work and the Countries tab is simply empty.
-  api.getCountries().then(c => { state.countries = c; }).catch(() => { state.countries = []; });
-
-  // Load reference data + voted-today + stats in parallel.
+  // Load reference data in parallel. Countries are part of the critical path
+  // because the homepage defaults to Countries mode (so they must be ready
+  // before the first render). getCountries degrades to [] if the table is unseeded.
   try {
-    const [teams, leagues, reasons] = await Promise.all([
-      api.getTeams(), api.getLeagues(), api.getReasonTags()
+    const [teams, leagues, reasons, countries] = await Promise.all([
+      api.getTeams(), api.getLeagues(), api.getReasonTags(),
+      api.getCountries().catch(() => [])
     ]);
     state.teams = teams;
     state.leagues = leagues;
     state.reasons = reasons;
+    state.countries = countries;
   } catch (e) {
     console.error('failed to load reference data', e);
     $('teams-empty').textContent = 'Could not load teams. Check your connection or Supabase config (env.js).';
     $('teams-empty').classList.remove('hidden');
     return;
+  }
+
+  // Apply the default mode's UI (Countries): hide the league filter and set the
+  // country search placeholder. switchMode() handles this on later toggles.
+  if (isCountries()) {
+    const lf = $('league-filter'); if (lf) lf.classList.add('hidden');
+    if (searchInput) searchInput.placeholder = 'Search any country to vote against…';
   }
 
   rebuildLeagueFilter();
@@ -1049,6 +1056,7 @@ async function init() {
         if (c && !state.countryVotedToday.voted) openVoteModal(countryId);
         else if (c) showToast('You already voted on a country today. Come back tomorrow.');
       } else {
+        await switchMode('clubs');   // homepage defaults to Countries — flip to Clubs for a club link
         const team = state.teams.find(t => t.id === clubId);
         if (team && !state.votedToday.voted) openVoteModal(clubId);
         else if (team) showToast('You already voted today. Come back tomorrow.');
