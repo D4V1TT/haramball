@@ -485,7 +485,8 @@ input, select { font-family: inherit; }
 .lb-tab:hover { color: var(--text); }
 .lb-tab.active { background: var(--bg-card); color: var(--text); }
 
-.lb-list { display: flex; flex-direction: column; gap: 8px; min-height: 480px; } /* reserve rows so the async leaderboard doesn't shift the footer (CLS) */
+.lb-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-list:empty { min-height: 480px; } /* reserve only while loading (empty) so few rows don't leave a gap */
 .lb-row {
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 14px 18px;
@@ -538,15 +539,16 @@ input, select { font-family: inherit; }
 .about-strong { color: var(--text); display: block; margin-bottom: 10px; font-size: 16px; }
 
 /* ---------- Layout-shift (CLS) reservations ----------
-   Reserve space for regions filled by JS after the data loads, so late
-   content doesn't shove the page down (was causing CLS on hero-stats,
-   browse-leagues and the footer). */
+   Reserve space for regions filled by JS after load, so late content doesn't
+   shove the page down. IMPORTANT: the big variable regions (grid, leaderboard)
+   only reserve while EMPTY (during loading) via :empty — once they have cards
+   the reservation is dropped, so a small filtered result never stretches cards
+   or leaves a gap. Small fixed regions reserve unconditionally (no gap risk). */
 #hero-stats { min-height: 58px; }
-.teams-grid { min-height: 520px; }
 .filters-bar { min-height: 46px; }
-#quick-vote:empty, .quick-vote-grid:empty { min-height: 0; }
+.teams-grid:empty { min-height: 520px; }
 @media (max-width: 640px) {
-  .teams-grid { min-height: 380px; }
+  .teams-grid:empty { min-height: 380px; }
   #hero-stats { min-height: 48px; }
 }
 
