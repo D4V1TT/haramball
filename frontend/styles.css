@@ -281,6 +281,7 @@ input, select { font-family: inherit; }
   justify-content: center;
   gap: 8px;
   margin-top: 14px;
+  min-height: 34px; /* reserve space for the "Try:" chips so they don't shift the stats below */
 }
 .hero-hint-label {
   font-size: 13px;
@@ -484,7 +485,7 @@ input, select { font-family: inherit; }
 .lb-tab:hover { color: var(--text); }
 .lb-tab.active { background: var(--bg-card); color: var(--text); }
 
-.lb-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-list { display: flex; flex-direction: column; gap: 8px; min-height: 480px; } /* reserve rows so the async leaderboard doesn't shift the footer (CLS) */
 .lb-row {
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 14px 18px;
