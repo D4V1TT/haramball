@@ -9,6 +9,12 @@
   padding: 32px 20px 80px;
 }
 
+/* Reserve space for the JS-hydrated regions so "Loading…" -> content does not
+   shift the page (CLS). These hold a sensible minimum until data arrives. */
+#t-reasons { min-height: 200px; }
+#t-comments { min-height: 160px; }
+.t-rank-line { min-height: 22px; }
+
 /* ---------- Breadcrumb ---------- */
 .crumbs {
   font-size: 13px;
