@@ -9,10 +9,10 @@
   padding: 32px 20px 80px;
 }
 
-/* Reserve space for the JS-hydrated regions so "Loading…" -> content does not
-   shift the page (CLS). These hold a sensible minimum until data arrives. */
-#t-reasons { min-height: 200px; }
-#t-comments { min-height: 160px; }
+/* Reserve a little space only for the single-line rank text while it loads.
+   We deliberately do NOT reserve big heights on #t-reasons / #t-comments:
+   most pages have little/no data, so a large min-height would leave an ugly
+   empty gap. The small shift there is preferable to a gap on every page. */
 .t-rank-line { min-height: 22px; }
 
 /* ---------- Breadcrumb ---------- */
