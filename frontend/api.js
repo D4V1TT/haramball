@@ -281,9 +281,9 @@ export const api = {
 
   // ===================== FAN COMMENTS (clubs + countries) =====================
   // Standalone, rate-limited comments shown on team/country pages.
-  async getComments(target_type, target_id, limit = 30) {
+  async getComments(target_type, target_id, limit = 20, offset = 0) {
     return await rpc('get_comments', {
-      p_target_type: target_type, p_target_id: target_id, p_limit: limit,
+      p_target_type: target_type, p_target_id: target_id, p_limit: limit, p_offset: offset,
     }) || [];
   },
 

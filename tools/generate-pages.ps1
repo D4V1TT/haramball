@@ -274,6 +274,7 @@ $HEADER
 <div class="cmt-error hidden" id="cmt-error"></div>
 </form>
 <div id="cmt-list"><p class="t-empty">Loading comments&hellip;</p></div>
+<button class="load-more hidden" id="cmt-more" type="button">Load more comments</button>
 </section>
 
 <section class="detail-section">
@@ -523,6 +524,7 @@ $HEADER
 <div class="cmt-error hidden" id="cmt-error"></div>
 </form>
 <div id="cmt-list"><p class="t-empty">Loading comments&hellip;</p></div>
+<button class="load-more hidden" id="cmt-more" type="button">Load more comments</button>
 </section>
 
 <section class="detail-section">

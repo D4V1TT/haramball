@@ -100,10 +100,13 @@ grant  execute on function public.post_comment(uuid, text, text, text, text, tex
 -- Merges standalone fan comments with the comments people leave WHILE voting
 -- (votes.comment / country_votes.comment), newest first, so the page shows all
 -- fan text in one list.
+-- Drop the old 3-arg signature before recreating with p_offset (paging).
+drop function if exists public.get_comments(text, text, integer);
 create or replace function public.get_comments (
   p_target_type text,
   p_target_id   text,
-  p_limit       integer default 30
+  p_limit       integer default 20,
+  p_offset      integer default 0
 )
 returns table (id uuid, body text, created_at timestamptz, ip_country text)
 language sql
@@ -135,10 +138,11 @@ as $$
       and cv.comment is not null and char_length(btrim(cv.comment)) > 0
   ) merged
   order by created_at desc
-  limit least(coalesce(p_limit, 30), 100);
+  limit least(coalesce(p_limit, 20), 100)
+  offset greatest(coalesce(p_offset, 0), 0);
 $$;
-revoke all on function public.get_comments(text, text, integer) from public;
-grant  execute on function public.get_comments(text, text, integer) to anon, authenticated;
+revoke all on function public.get_comments(text, text, integer, integer) from public;
+grant  execute on function public.get_comments(text, text, integer, integer) to anon, authenticated;
 
 -- ============================================================
 -- DONE. To hide a bad comment: update public.comments set status='hidden' where id='…';

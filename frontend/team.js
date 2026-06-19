@@ -96,24 +96,46 @@ async function hydrateReasons() {
 // ---------- Fan comments (standalone, rate-limited) ----------
 const TARGET_TYPE = 'club';
 
-function paintComments(list, rows) {
-  if (!rows || rows.length === 0) {
-    list.innerHTML = `<p class="t-empty">No comments yet. Be the first to make the case against ${escapeHtml(teamName)}.</p>`;
-    return;
-  }
-  list.innerHTML = rows.map(r => `
-    <div class="cmt-item">
+const CMT_PAGE = 20;
+let cmtOffset = 0;
+
+function commentHtml(r) {
+  return `<div class="cmt-item">
       <p class="cmt-item-body">${escapeHtml(r.body)}</p>
       <div class="cmt-item-time">${escapeHtml(timeAgo(r.created_at))}</div>
-    </div>`).join('');
+    </div>`;
 }
 
+// Render the first page (also used to reset after posting a new comment).
 async function renderComments() {
-  const list = $('cmt-list');
+  const list = $('cmt-list'), more = $('cmt-more');
   if (!list) return;
+  cmtOffset = 0;
   let rows;
-  try { rows = await api.getComments(TARGET_TYPE, teamId, 30); } catch { rows = []; }
-  paintComments(list, rows);
+  try { rows = await api.getComments(TARGET_TYPE, teamId, CMT_PAGE, 0); } catch { rows = []; }
+  if (!rows || rows.length === 0) {
+    list.innerHTML = `<p class="t-empty">No comments yet. Be the first to make the case against ${escapeHtml(teamName)}.</p>`;
+    if (more) more.classList.add('hidden');
+    return;
+  }
+  list.innerHTML = rows.map(commentHtml).join('');
+  cmtOffset = rows.length;
+  if (more) more.classList.toggle('hidden', rows.length < CMT_PAGE);
+}
+
+// Append the next page.
+async function loadMoreComments() {
+  const list = $('cmt-list'), more = $('cmt-more');
+  if (!list || !more) return;
+  more.disabled = true; more.textContent = 'Loading…';
+  let rows;
+  try { rows = await api.getComments(TARGET_TYPE, teamId, CMT_PAGE, cmtOffset); } catch { rows = []; }
+  if (rows && rows.length) {
+    list.insertAdjacentHTML('beforeend', rows.map(commentHtml).join(''));
+    cmtOffset += rows.length;
+  }
+  more.disabled = false; more.textContent = 'Load more comments';
+  if (!rows || rows.length < CMT_PAGE) more.classList.add('hidden');
 }
 
 function friendlyCmtError(e) {
@@ -127,7 +149,8 @@ function friendlyCmtError(e) {
 
 function wireCommentForm() {
   const form = $('cmt-form'), input = $('cmt-input'), count = $('cmt-charcount'),
-        submit = $('cmt-submit'), errEl = $('cmt-error');
+        submit = $('cmt-submit'), errEl = $('cmt-error'), more = $('cmt-more');
+  if (more) more.addEventListener('click', loadMoreComments);
   if (!form || !input) return;
   const showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } };
   input.addEventListener('input', () => { if (count) count.textContent = input.value.length; });
