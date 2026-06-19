@@ -97,6 +97,9 @@ revoke all on function public.post_comment(uuid, text, text, text, text, text) f
 grant  execute on function public.post_comment(uuid, text, text, text, text, text) to anon, authenticated;
 
 -- ---------- READ comments for a page ----------
+-- Merges standalone fan comments with the comments people leave WHILE voting
+-- (votes.comment / country_votes.comment), newest first, so the page shows all
+-- fan text in one list.
 create or replace function public.get_comments (
   p_target_type text,
   p_target_id   text,
@@ -109,8 +112,28 @@ security definer
 set search_path = public
 as $$
   select id, body, created_at, ip_country
-  from public.comments
-  where target_type = p_target_type and target_id = p_target_id and status = 'visible'
+  from (
+    -- standalone fan comments
+    select id, body, created_at, ip_country
+    from public.comments
+    where target_type = p_target_type and target_id = p_target_id and status = 'visible'
+
+    union all
+
+    -- comments left while casting a club vote
+    select v.id, v.comment, v.voted_at, v.ip_country
+    from public.votes v
+    where p_target_type = 'club' and v.team_id = p_target_id
+      and v.comment is not null and char_length(btrim(v.comment)) > 0
+
+    union all
+
+    -- comments left while casting a country vote
+    select cv.id, cv.comment, cv.voted_at, cv.ip_country
+    from public.country_votes cv
+    where p_target_type = 'country' and cv.country_id = p_target_id
+      and cv.comment is not null and char_length(btrim(cv.comment)) > 0
+  ) merged
   order by created_at desc
   limit least(coalesce(p_limit, 30), 100);
 $$;
