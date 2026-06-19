@@ -279,6 +279,27 @@ export const api = {
     });
   },
 
+  // ===================== FAN COMMENTS (clubs + countries) =====================
+  // Standalone, rate-limited comments shown on team/country pages.
+  async getComments(target_type, target_id, limit = 20, offset = 0) {
+    return await rpc('get_comments', {
+      p_target_type: target_type, p_target_id: target_id, p_limit: limit, p_offset: offset,
+    }) || [];
+  },
+
+  async postComment({ target_type, target_id, body }) {
+    const trimmed = (body || '').trim().slice(0, 280);
+    if (!trimmed) throw err('comment is empty', '22023');
+    return await rpc('post_comment', {
+      p_voter_id:    getVoterId(),
+      p_target_type: target_type,
+      p_target_id:   target_id,
+      p_body:        trimmed,
+      p_user_agent:  (navigator.userAgent || '').slice(0, 200),
+      p_ip_country:  null,
+    });
+  },
+
   // Utility: clear cached reference data (e.g. after a manual update)
   _clearCache() { cache.teams = null; cache.leagues = null; cache.reasons = null; cache.countries = null; },
 

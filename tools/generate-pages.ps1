@@ -163,6 +163,11 @@ foreach ($t in $teams) {
 
   $foundedTxt = if ($founded) { " &middot; Founded $founded" } else { '' }
   $cityTxt    = if ($city) { "$city, " } else { '' }
+  $confFull   = if ($confNames.ContainsKey($t.confederation)) { $confNames[$t.confederation] } else { $conf }
+  $originBits = @()
+  if ($city)    { $originBits += "based in $city" }
+  if ($founded) { $originBits += "founded in $founded" }
+  $originTxt  = if ($originBits.Count -gt 0) { ", " + ($originBits -join ", ") + "," } else { "" }
   $title   = "Is $nameH playing Haramball? Vote &amp; rank | Haramball"
   $desc    = "Is $nameH guilty of haramball &mdash; time-wasting, parking the bus, anti-football? See live vote totals, the worst-football leaderboard rank, fan reasons and comments. Cast your verdict."
 
@@ -251,13 +256,25 @@ $HEADER
 </div>
 
 <section class="detail-section">
+<h2>Is $nameH guilty of haramball?</h2>
+<p>$nameH$originTxt compete in the <strong>$leagueH</strong>, $country's top flight, in $confFull. Plenty of sides get accused of haramball &mdash; the cynical, time-wasting, anti-football that drains a match of any joy. The question here is simple: does $nameH belong on the charge sheet?</p>
+<p>If you have ever searched &ldquo;$nameH time-wasting&rdquo;, &ldquo;$nameH boring&rdquo;, &ldquo;$nameH park the bus&rdquo; or &ldquo;is $nameH anti-football&rdquo;, this is where the argument gets settled. Cast your verdict above, see how $nameH rank against every other club in the haramball court, and add your own case in the comments below.</p>
+</section>
+
+<section class="detail-section">
 <h2>Why fans convict $nameH</h2>
 <div id="t-reasons"><p class="t-empty">Loading reasons&hellip;</p></div>
 </section>
 
-<section class="detail-section">
-<h2>What fans are saying</h2>
-<div id="t-comments"><p class="t-empty">Loading comments&hellip;</p></div>
+<section class="detail-section" id="comments">
+<h2>Fan verdicts on $nameH</h2>
+<form class="cmt-form" id="cmt-form">
+<textarea id="cmt-input" class="cmt-input" maxlength="280" rows="3" placeholder="Make your case against $nameH. No links."></textarea>
+<div class="cmt-form-row"><span class="cmt-count"><span id="cmt-charcount">0</span>/280</span><button type="submit" class="cmt-submit" id="cmt-submit">Post comment</button></div>
+<div class="cmt-error hidden" id="cmt-error"></div>
+</form>
+<div id="cmt-list"><p class="t-empty">Loading comments&hellip;</p></div>
+<button class="load-more hidden" id="cmt-more" type="button">Load more comments</button>
 </section>
 
 <section class="detail-section">
@@ -489,13 +506,25 @@ $HEADER
 </div>
 
 <section class="detail-section">
+<h2>Is $nameH guilty of haramball?</h2>
+<p>The $nameH national team competes in $confH. International football has its own brand of haramball &mdash; time-wasting, parking the bus, cynical fouling and goalless grinds, never more visible than at a major tournament. The question here is simple: is $nameH guilty?</p>
+<p>If you have ever searched &ldquo;$nameH time-wasting&rdquo;, &ldquo;$nameH boring&rdquo;, &ldquo;$nameH defensive&rdquo; or &ldquo;is $nameH anti-football&rdquo;, settle it here. Cast your verdict above, see how $nameH rank against every FIFA nation in the haramball court, and add your own case in the comments below.</p>
+</section>
+
+<section class="detail-section">
 <h2>Why fans convict $nameH</h2>
 <div id="t-reasons"><p class="t-empty">Loading reasons&hellip;</p></div>
 </section>
 
-<section class="detail-section">
-<h2>What fans are saying</h2>
-<div id="t-comments"><p class="t-empty">Loading comments&hellip;</p></div>
+<section class="detail-section" id="comments">
+<h2>Fan verdicts on $nameH</h2>
+<form class="cmt-form" id="cmt-form">
+<textarea id="cmt-input" class="cmt-input" maxlength="280" rows="3" placeholder="Make your case against $nameH. No links."></textarea>
+<div class="cmt-form-row"><span class="cmt-count"><span id="cmt-charcount">0</span>/280</span><button type="submit" class="cmt-submit" id="cmt-submit">Post comment</button></div>
+<div class="cmt-error hidden" id="cmt-error"></div>
+</form>
+<div id="cmt-list"><p class="t-empty">Loading comments&hellip;</p></div>
+<button class="load-more hidden" id="cmt-more" type="button">Load more comments</button>
 </section>
 
 <section class="detail-section">
