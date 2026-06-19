@@ -74,23 +74,61 @@ async function hydrateReasons() {
   }).join('');
 }
 
-async function hydrateComments() {
-  const wrap = $('t-comments');
-  if (!wrap) return;
-  let rows;
-  try { rows = await api.getCountryComments(countryId, 12); } catch { rows = []; }
+// ---------- Fan comments (standalone, rate-limited) ----------
+const TARGET_TYPE = 'country';
+
+function paintComments(list, rows) {
   if (!rows || rows.length === 0) {
-    wrap.innerHTML = `<p class="t-empty">No comments yet. Add the first one when you vote.</p>`;
+    list.innerHTML = `<p class="t-empty">No comments yet. Be the first to make the case against ${escapeHtml(countryName)}.</p>`;
     return;
   }
-  wrap.innerHTML = rows.map(r => `
-    <div class="t-comment">
-      <p class="t-comment-text">“${escapeHtml(r.comment)}”</p>
-      <div class="t-comment-meta">
-        ${r.reason_label ? `<span class="t-comment-reason">${escapeHtml(r.reason_label)}</span>` : ''}
-        <span class="t-comment-time">${escapeHtml(timeAgo(r.voted_at))}</span>
-      </div>
+  list.innerHTML = rows.map(r => `
+    <div class="cmt-item">
+      <p class="cmt-item-body">${escapeHtml(r.body)}</p>
+      <div class="cmt-item-time">${escapeHtml(timeAgo(r.created_at))}</div>
     </div>`).join('');
+}
+
+async function renderComments() {
+  const list = $('cmt-list');
+  if (!list) return;
+  let rows;
+  try { rows = await api.getComments(TARGET_TYPE, countryId, 30); } catch { rows = []; }
+  paintComments(list, rows);
+}
+
+function friendlyCmtError(e) {
+  const m = (e && e.message) || '';
+  if (/too fast|wait/i.test(m)) return 'Posting too fast — wait a second and try again.';
+  if (/link/i.test(m)) return 'Links are not allowed in comments.';
+  if (/long/i.test(m)) return 'Comment is too long (max 280 characters).';
+  if (/empty/i.test(m)) return 'Write something first.';
+  return 'Could not post your comment. Please try again.';
+}
+
+function wireCommentForm() {
+  const form = $('cmt-form'), input = $('cmt-input'), count = $('cmt-charcount'),
+        submit = $('cmt-submit'), errEl = $('cmt-error');
+  if (!form || !input) return;
+  const showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } };
+  input.addEventListener('input', () => { if (count) count.textContent = input.value.length; });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (errEl) errEl.classList.add('hidden');
+    const body = input.value.trim();
+    if (!body) return;
+    if (/(https?:\/\/|www\.)/i.test(body)) { showErr('Links are not allowed in comments.'); return; }
+    submit.disabled = true; submit.textContent = 'Posting…';
+    try {
+      await api.postComment({ target_type: TARGET_TYPE, target_id: countryId, body });
+      input.value = ''; if (count) count.textContent = '0';
+      await renderComments();
+    } catch (err) {
+      showErr(friendlyCmtError(err));
+    } finally {
+      submit.disabled = false; submit.textContent = 'Post comment';
+    }
+  });
 }
 
 function wireVoteButton() {
@@ -120,7 +158,8 @@ function wireShareButton() {
 if (countryId) {
   wireVoteButton();
   wireShareButton();
+  wireCommentForm();
   hydrateStats();
   hydrateReasons();
-  hydrateComments();
+  renderComments();
 }
