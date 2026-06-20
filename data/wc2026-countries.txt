@@ -1,68 +1,64 @@
-# World Cup 2026 nations to keep INDEXED (one country id per line, must match
-# data/countries.json ids). Lines starting with # are ignored.
-# Edit this list freely — re-run tools/generate-pages.ps1 after changes.
-# 48 entries (3 hosts + qualifiers by confederation slot). Adjust as qualification finalizes.
-
-# Hosts (CONCACAF)
-united-states
-canada
-mexico
+# World Cup 2026 qualified nations to keep INDEXED (one country id per line,
+# must match data/countries.json ids). Lines starting with # are ignored.
+# Source: 2026 FIFA World Cup qualified teams (48). Edit if anything changes,
+# then re-run tools/generate-pages.ps1.
 
 # UEFA (16)
-france
-spain
-england
-portugal
-netherlands
-germany
-italy
-croatia
-belgium
-switzerland
-denmark
 austria
-ukraine
-turkey
+belgium
+bosnia-and-herzegovina
+croatia
+czechia
+england
+france
+germany
+netherlands
 norway
-poland
+portugal
+scotland
+spain
+sweden
+switzerland
+turkey
 
 # CONMEBOL (6)
 argentina
 brazil
-uruguay
 colombia
 ecuador
 paraguay
+uruguay
 
-# CAF (9)
+# CONCACAF (6)
+canada
+curacao
+haiti
+mexico
+panama
+united-states
+
+# CAF (10)
+algeria
+cape-verde
+dr-congo
+egypt
+ghana
+ivory-coast
 morocco
 senegal
-egypt
-nigeria
-cameroon
-ivory-coast
-algeria
-ghana
+south-africa
 tunisia
 
-# AFC (8)
-japan
-south-korea
-iran
+# AFC (9)
 australia
-saudi-arabia
-qatar
+iran
 iraq
+japan
+jordan
+qatar
+saudi-arabia
+south-korea
 uzbekistan
-
-# CONCACAF (3 more)
-panama
-costa-rica
-jamaica
 
 # OFC (1)
 new-zealand
-
-# Intercontinental playoff (2)
-jordan
-dr-congo
