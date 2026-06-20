@@ -613,6 +613,24 @@ input, select { font-family: inherit; }
   padding-top: 32px;
   border-top: 1px solid var(--border);
 }
+/* Compact homepage "browse" block (links to the full /leagues and /countries pages) */
+.browse-all {
+  margin: 48px 0 8px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; gap: 12px;
+}
+.browse-all-link {
+  display: inline-block;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  padding: 12px 20px;
+  border-radius: 100px;
+  font-size: 14px; font-weight: 600;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.browse-all-link:hover { color: var(--text); border-color: var(--accent); background: var(--bg-hover); }
 .browse-title { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
 .browse-sub { color: var(--text-muted); font-size: 14px; margin: 0 0 20px; }
 .league-index {

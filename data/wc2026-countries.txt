@@ -1,0 +1,68 @@
+# World Cup 2026 nations to keep INDEXED (one country id per line, must match
+# data/countries.json ids). Lines starting with # are ignored.
+# Edit this list freely — re-run tools/generate-pages.ps1 after changes.
+# 48 entries (3 hosts + qualifiers by confederation slot). Adjust as qualification finalizes.
+
+# Hosts (CONCACAF)
+united-states
+canada
+mexico
+
+# UEFA (16)
+france
+spain
+england
+portugal
+netherlands
+germany
+italy
+croatia
+belgium
+switzerland
+denmark
+austria
+ukraine
+turkey
+norway
+poland
+
+# CONMEBOL (6)
+argentina
+brazil
+uruguay
+colombia
+ecuador
+paraguay
+
+# CAF (9)
+morocco
+senegal
+egypt
+nigeria
+cameroon
+ivory-coast
+algeria
+ghana
+tunisia
+
+# AFC (8)
+japan
+south-korea
+iran
+australia
+saudi-arabia
+qatar
+iraq
+uzbekistan
+
+# CONCACAF (3 more)
+panama
+costa-rica
+jamaica
+
+# OFC (1)
+new-zealand
+
+# Intercontinental playoff (2)
+jordan
+dr-congo

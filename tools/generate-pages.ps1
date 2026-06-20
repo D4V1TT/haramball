@@ -141,6 +141,53 @@ $CF = @"
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e73dff5b5ce54a71905c7f411a12dfab"}'></script>
 "@
 
+# ---------- Indexing policy ----------
+# To recover from the thin-content site-wide demotion, index only the pages with
+# real engagement: main pages + the top N teams + top N countries (by all-time
+# votes). Everything else (the long tail + league pages) gets noindex,follow so
+# it stops dragging domain quality. Raise $TOP_N later to widen the indexed set.
+$TOP_N = 5
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$SUPA_URL  = 'https://wolleqnvaonerzsomzvd.supabase.co'
+$SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvbGxlcW52YW9uZXJ6c29tenZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTE1NTUsImV4cCI6MjA5MzkyNzU1NX0.eIG9qK4SdTsO3V5KVazvSCDZGKJ-9dN1w9ql5akNQ6M'
+function Get-TopIds($rpc, $idField, $n) {
+  try {
+    $h = @{ apikey = $SUPA_ANON; Authorization = "Bearer $SUPA_ANON"; 'Content-Type' = 'application/json' }
+    $b = "{""p_period"":""all"",""p_limit"":$n}"
+    $r = Invoke-RestMethod -Uri "$SUPA_URL/rest/v1/rpc/$rpc" -Method Post -Headers $h -Body $b -TimeoutSec 25
+    return @($r | ForEach-Object { [string]$_.$idField })
+  } catch {
+    Write-Host "  ! $rpc query failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    return $null
+  }
+}
+# Teams: index the top N by all-time votes (live from Supabase).
+$topTeamIds = Get-TopIds 'leaderboard' 'team_id' $TOP_N
+$idxTeams = New-Object 'System.Collections.Generic.HashSet[string]'
+$teamPruneOn = $true
+if ($null -eq $topTeamIds) { $teamPruneOn = $false }
+else { foreach ($x in $topTeamIds) { [void]$idxTeams.Add($x) } }
+if (-not $teamPruneOn) { Write-Host "  ! top-teams fetch failed -> indexing ALL teams (safe fallback)" -ForegroundColor Yellow }
+
+# Countries: index the World Cup 2026 nations (editable list, not top-N).
+$idxCountries = New-Object 'System.Collections.Generic.HashSet[string]'
+$countryPruneOn = $true
+$wcFile = Join-Path $dataDir 'wc2026-countries.txt'
+if (Test-Path $wcFile) {
+  foreach ($line in [IO.File]::ReadAllLines($wcFile, [Text.Encoding]::UTF8)) {
+    $t = $line.Trim()
+    if ($t -and -not $t.StartsWith('#')) { [void]$idxCountries.Add($t) }
+  }
+} else {
+  $countryPruneOn = $false
+  Write-Host "  ! wc2026-countries.txt not found -> indexing ALL countries (safe fallback)" -ForegroundColor Yellow
+}
+$ROBOTS_INDEX   = 'index, follow, max-image-preview:large'
+$ROBOTS_NOINDEX = 'noindex, follow'
+function Team-Indexed($id)    { return ((-not $teamPruneOn)    -or $idxTeams.Contains($id)) }
+function Country-Indexed($id) { return ((-not $countryPruneOn) -or $idxCountries.Contains($id)) }
+Write-Host "Index policy: main pages + $($idxTeams.Count) teams + $($idxCountries.Count) countries indexed; league pages + the rest = noindex." -ForegroundColor Cyan
+
 # ---------- Generate TEAM pages ----------
 if (-not (Test-Path $teamDir)) { New-Item -ItemType Directory -Path $teamDir | Out-Null }
 Write-Host "Generating $($teams.Count) team pages..." -ForegroundColor Cyan
@@ -164,6 +211,7 @@ foreach ($t in $teams) {
   $foundedTxt = if ($founded) { " &middot; Founded $founded" } else { '' }
   $cityTxt    = if ($city) { "$city, " } else { '' }
   $confFull   = if ($confNames.ContainsKey($t.confederation)) { $confNames[$t.confederation] } else { $conf }
+  $robots     = if (Team-Indexed $id) { $ROBOTS_INDEX } else { $ROBOTS_NOINDEX }
   $originBits = @()
   if ($city)    { $originBits += "based in $city" }
   if ($founded) { $originBits += "founded in $founded" }
@@ -188,7 +236,7 @@ foreach ($t in $teams) {
 <meta name="description" content="$desc" />
 <link rel="canonical" href="$url" />
 <meta name="theme-color" content="#0a0a0a" />
-<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="robots" content="$robots" />
 <meta property="og:site_name" content="Haramball" />
 <meta property="og:title" content="Is $nameH playing Haramball?" />
 <meta property="og:description" content="Vote on whether $nameH is serving the worst football of the week." />
@@ -335,7 +383,7 @@ foreach ($lname in $byLeague.Keys) {
 <meta name="description" content="$desc" />
 <link rel="canonical" href="$url" />
 <meta name="theme-color" content="#0a0a0a" />
-<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="robots" content="noindex, follow" />
 <meta property="og:site_name" content="Haramball" />
 <meta property="og:title" content="$title" />
 <meta property="og:description" content="$desc" />
@@ -417,6 +465,7 @@ foreach ($c in $countries) {
   $color   = if ($c.color) { $c.color } else { '#444' }
   $initials= Esc-Html (Get-Initials $name)
   $url     = "$SITE/country/$id"
+  $crobots = if (Country-Indexed $id) { $ROBOTS_INDEX } else { $ROBOTS_NOINDEX }
 
   $title = "Is $nameH playing Haramball? Vote &amp; rank | Haramball"
   $desc  = "Is the $nameH national team guilty of haramball &mdash; time-wasting, parking the bus, anti-football? Vote and see the worst-football leaderboard rank, fan reasons and comments."
@@ -438,7 +487,7 @@ foreach ($c in $countries) {
 <meta name="description" content="$desc" />
 <link rel="canonical" href="$url" />
 <meta name="theme-color" content="#0a0a0a" />
-<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="robots" content="$crobots" />
 <meta property="og:site_name" content="Haramball" />
 <meta property="og:title" content="Is $nameH playing Haramball?" />
 <meta property="og:description" content="Vote on whether the $nameH national team is serving the worst football." />
@@ -651,6 +700,28 @@ for ($k = 0; $k -lt $idList.Count; $k++) {
 Write-File (Join-Path $sqlDir '06-import-clubs.sql') $tsb.ToString()
 Write-Host "  -> 06-import-clubs.sql ($($leaguesRaw.Count) leagues, $($teams.Count) teams)." -ForegroundColor Green
 
+# ---------- Prune orphaned page files ----------
+# Delete generated .html whose id/slug no longer exists in the data (left behind
+# when a club/country id is renamed or removed). Keeps the output in sync.
+function Prune-Dir($dir, $validSet) {
+  if (-not (Test-Path $dir)) { return 0 }
+  $removed = 0
+  Get-ChildItem -Path $dir -Filter *.html | ForEach-Object {
+    if (-not $validSet.Contains($_.BaseName)) { Remove-Item $_.FullName -Force; $removed++ }
+  }
+  return $removed
+}
+$teamIdSet = New-Object 'System.Collections.Generic.HashSet[string]'
+foreach ($t in $teams) { [void]$teamIdSet.Add($t.id) }
+$countryIdSet = New-Object 'System.Collections.Generic.HashSet[string]'
+foreach ($c in $countries) { [void]$countryIdSet.Add($c.id) }
+$leagueSlugSet = New-Object 'System.Collections.Generic.HashSet[string]'
+foreach ($k in $byLeague.Keys) { [void]$leagueSlugSet.Add($leagueSlug[$k]) }
+$rmT = Prune-Dir $teamDir $teamIdSet
+$rmC = Prune-Dir $countryDir $countryIdSet
+$rmL = Prune-Dir $leagueDir $leagueSlugSet
+Write-Host "Pruned orphan pages: $rmT team, $rmC country, $rmL league." -ForegroundColor Green
+
 # ---------- Sitemap ----------
 Write-Host "Writing sitemap.xml..." -ForegroundColor Cyan
 $sb = New-Object System.Text.StringBuilder
@@ -658,58 +729,143 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
 [void]$sb.AppendLine("  <url><loc>$SITE/</loc><lastmod>$today</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>")
 [void]$sb.AppendLine("  <url><loc>$SITE/what-is-haramball</loc><lastmod>$today</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>")
-foreach ($lname in ($byLeague.Keys | Sort-Object)) {
-  [void]$sb.AppendLine("  <url><loc>$SITE/league/$($leagueSlug[$lname])</loc><lastmod>$today</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>")
-}
+[void]$sb.AppendLine("  <url><loc>$SITE/leagues</loc><lastmod>$today</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+[void]$sb.AppendLine("  <url><loc>$SITE/countries</loc><lastmod>$today</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+# Only INDEXED pages belong in the sitemap (never list noindex URLs). League
+# pages are noindex, and only the top-N teams/countries are indexed.
+$smTeams = 0; $smCountries = 0
 foreach ($t in ($teams | Sort-Object id)) {
-  [void]$sb.AppendLine("  <url><loc>$SITE/team/$($t.id)</loc><lastmod>$today</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+  if (Team-Indexed $t.id) {
+    [void]$sb.AppendLine("  <url><loc>$SITE/team/$($t.id)</loc><lastmod>$today</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+    $smTeams++
+  }
 }
 foreach ($c in ($countries | Sort-Object id)) {
-  [void]$sb.AppendLine("  <url><loc>$SITE/country/$($c.id)</loc><lastmod>$today</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+  if (Country-Indexed $c.id) {
+    [void]$sb.AppendLine("  <url><loc>$SITE/country/$($c.id)</loc><lastmod>$today</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+    $smCountries++
+  }
 }
 [void]$sb.AppendLine('</urlset>')
 Write-File (Join-Path $frontend 'sitemap.xml') $sb.ToString()
-Write-Host "  -> sitemap.xml with $(2 + $byLeague.Keys.Count + $teams.Count + $countries.Count) URLs." -ForegroundColor Green
+Write-Host "  -> sitemap.xml with $(4 + $smTeams + $smCountries) URLs ($smTeams teams, $smCountries countries, league pages excluded)." -ForegroundColor Green
 
-# ---------- Inject "Browse by league" into index.html ----------
+# ---------- Browse index pages (/leagues, /countries) ----------
+# The full directory lives on dedicated pages so the homepage stays focused on
+# "haramball / worst football" rather than ~355 directory links (topical dilution).
+Write-Host "Writing browse index pages..." -ForegroundColor Cyan
+$leagueLis = ($byLeague.Keys | Sort-Object | ForEach-Object {
+  $m = $leagueMeta[$_]
+  $ctry = if ($m) { Esc-Html $m.country } else { '' }
+  "<li><a href=""/league/$($leagueSlug[$_])""><span>$(Esc-Html $_)</span> <span class=""li-country"">$ctry</span></a></li>"
+}) -join "`n"
+$countryLis = ($countries | Sort-Object name | ForEach-Object {
+  "<li><a href=""/country/$($_.id)""><span>$(Esc-Html $_.name)</span> <span class=""li-country"">$(Esc-Html $_.confederation)</span></a></li>"
+}) -join "`n"
+$leagueCountN  = $byLeague.Keys.Count
+$countryCountN = $countries.Count
+
+$leaguesPage = @"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>All football leagues &mdash; Haramball</title>
+<meta name="description" content="Browse every league in the haramball court. Vote on the worst football across $leagueCountN leagues worldwide." />
+<link rel="canonical" href="$SITE/leagues" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta property="og:site_name" content="Haramball" />
+<meta property="og:title" content="All football leagues on Haramball" />
+<meta property="og:description" content="Browse every league in the haramball court." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="$SITE/leagues" />
+<meta property="og:image" content="$SITE/og-image.png" />
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
+<link rel="stylesheet" href="/styles.css" />
+<link rel="stylesheet" href="/page.css" />
+<script src="/env.js"></script>
+</head>
+<body>
+$HEADER
+<main>
+<article class="detail-page">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Haramball</a><span class="sep">/</span><span>Leagues</span></nav>
+<h1>Browse by league</h1>
+<p class="detail-lede">Every league in the haramball court &mdash; $leagueCountN in all. Pick one to see who is serving the worst football, or vote on the <a href="/">home page</a>.</p>
+<ul class="league-index">
+$leagueLis
+</ul>
+</article>
+</main>
+$FOOTER
+$CF
+</body>
+</html>
+"@
+Write-File (Join-Path $frontend 'leagues.html') $leaguesPage
+
+$countriesPage = @"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>All national teams &mdash; Haramball</title>
+<meta name="description" content="Browse every FIFA nation in the haramball court. Vote on the worst national-team football across $countryCountN countries." />
+<link rel="canonical" href="$SITE/countries" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta property="og:site_name" content="Haramball" />
+<meta property="og:title" content="All national teams on Haramball" />
+<meta property="og:description" content="Browse every FIFA nation in the haramball court." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="$SITE/countries" />
+<meta property="og:image" content="$SITE/og-image.png" />
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
+<link rel="stylesheet" href="/styles.css" />
+<link rel="stylesheet" href="/page.css" />
+<script src="/env.js"></script>
+</head>
+<body>
+$HEADER
+<main>
+<article class="detail-page">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Haramball</a><span class="sep">/</span><span>National teams</span></nav>
+<h1>Browse national teams</h1>
+<p class="detail-lede">Every FIFA nation in the haramball court &mdash; $countryCountN in all. Pick one to cast your verdict, or vote on the <a href="/">home page</a>.</p>
+<ul class="league-index">
+$countryLis
+</ul>
+</article>
+</main>
+$FOOTER
+$CF
+</body>
+</html>
+"@
+Write-File (Join-Path $frontend 'countries.html') $countriesPage
+Write-Host "  -> leagues.html + countries.html written." -ForegroundColor Green
+
+# ---------- Homepage: inject two compact browse links ----------
 $indexPath = Join-Path $frontend 'index.html'
 $indexHtml = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
-$startMark = '<!-- LEAGUE-INDEX:START -->'
-$endMark   = '<!-- LEAGUE-INDEX:END -->'
-if ($indexHtml.Contains($startMark) -and $indexHtml.Contains($endMark)) {
-  $links = ($byLeague.Keys | Sort-Object | ForEach-Object {
-    $m = $leagueMeta[$_]
-    $ctry = if ($m) { Esc-Html $m.country } else { '' }
-    "<li><a href=""/league/$($leagueSlug[$_])""><span>$(Esc-Html $_)</span> <span class=""li-country"">$ctry</span></a></li>"
-  }) -join "`n"
-  $inner = "`n<ul class=""league-index"">`n$links`n</ul>`n"
-  $iStart = $indexHtml.IndexOf($startMark)
-  $iEnd   = $indexHtml.IndexOf($endMark)
-  $pre    = $indexHtml.Substring(0, $iStart + $startMark.Length)
-  $post   = $indexHtml.Substring($iEnd)
-  $indexHtml = $pre + $inner + $post
+$bStart = '<!-- BROWSE-LINKS:START -->'
+$bEnd   = '<!-- BROWSE-LINKS:END -->'
+if ($indexHtml.Contains($bStart) -and $indexHtml.Contains($bEnd)) {
+  $blinks = "`n<a class=""browse-all-link"" href=""/leagues"">Browse all $leagueCountN leagues &rarr;</a>`n<a class=""browse-all-link"" href=""/countries"">Browse all $countryCountN national teams &rarr;</a>`n"
+  $bi1 = $indexHtml.IndexOf($bStart)
+  $bi2 = $indexHtml.IndexOf($bEnd)
+  $bpre = $indexHtml.Substring(0, $bi1 + $bStart.Length)
+  $bpost = $indexHtml.Substring($bi2)
+  $indexHtml = $bpre + $blinks + $bpost
   Write-File $indexPath $indexHtml
-  Write-Host "  -> index.html league index updated." -ForegroundColor Green
+  Write-Host "  -> index.html browse links updated." -ForegroundColor Green
 } else {
-  Write-Host "  ! LEAGUE-INDEX markers not found in index.html -- skipped." -ForegroundColor Yellow
-}
-
-# ---------- Inject "Browse by country" into index.html ----------
-$cStart = '<!-- COUNTRY-INDEX:START -->'
-$cEnd   = '<!-- COUNTRY-INDEX:END -->'
-$indexHtml = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
-if ($indexHtml.Contains($cStart) -and $indexHtml.Contains($cEnd)) {
-  $clinks = ($countries | Sort-Object name | ForEach-Object {
-    "<li><a href=""/country/$($_.id)""><span>$(Esc-Html $_.name)</span> <span class=""li-country"">$(Esc-Html $_.confederation)</span></a></li>"
-  }) -join "`n"
-  $cinner = "`n<ul class=""league-index"">`n$clinks`n</ul>`n"
-  $ci1 = $indexHtml.IndexOf($cStart)
-  $ci2 = $indexHtml.IndexOf($cEnd)
-  $cpre = $indexHtml.Substring(0, $ci1 + $cStart.Length)
-  $cpost = $indexHtml.Substring($ci2)
-  $indexHtml = $cpre + $cinner + $cpost
-  Write-File $indexPath $indexHtml
-  Write-Host "  -> index.html country index updated." -ForegroundColor Green
+  Write-Host "  ! BROWSE-LINKS markers not found in index.html -- skipped." -ForegroundColor Yellow
 }
 
 Write-Host "`nDone. Team: $teamCount, League: $leagueCount, Country: $countryCount." -ForegroundColor Cyan
