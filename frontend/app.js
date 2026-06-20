@@ -61,7 +61,7 @@ function track(eventName, props = {}) {
 
 // ---------- Application state ----------
 const state = {
-  mode: 'clubs',              // 'clubs' | 'countries' (homepage defaults to clubs)
+  mode: 'countries',          // 'clubs' | 'countries' (homepage defaults to countries)
   teams: [],
   countries: [],
   leagues: [],
