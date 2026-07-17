@@ -6,3 +6,6 @@ Allow: /
 
 # Sitemap
 Sitemap: https://haramball.com/sitemap.xml
+# Accelerates recrawl of the deliberately-noindexed thin pages so they
+# leave the index faster; remove once Search Console shows them gone.
+Sitemap: https://haramball.com/sitemap-removals.xml
